@@ -7,7 +7,7 @@
 
 Incrementally build a personal memory system accessible from Windows and Android. The PC hosts the services and primary copy; the phone keeps a local, searchable-offline copy that syncs with the PC when both are on the same Wi-Fi network. Remote access may be added later through a private network such as Tailscale.
 
-The system preserves sources intact, shows the provenance of each piece of information, and can later serve local Qwen, OpenCode, and Hermes. ChatGPT integration is a separate, optional target. As of 2026-10-01, OpenAI documentation says MCP apps are web-only, not mobile; ChatGPT connects to remote MCP servers, and a server on a private network may need a Secure MCP Tunnel. Access and available actions depend on plan/client. The purpose-built Android app remains the direct mobile route. [OpenAI source](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt).
+The system preserves sources intact, including images and attached files, shows the provenance of each piece of information, and can later serve local models such as Qwen, gpt-oss-20b, and Gemma 4, as well as agent harnesses such as OpenCode and Hermes. ChatGPT integration is a separate, optional target. As of 2026-10-01, OpenAI documentation says MCP apps are web-only, not mobile; ChatGPT connects to remote MCP servers, and a server on a private network may need a Secure MCP Tunnel. Access and available actions depend on plan/client. The purpose-built Android app remains the direct mobile route. [OpenAI source](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt).
 
 Full requirements, scenarios, acceptance criteria, and portfolio rationale are in the [requirements document](../../project/requirements-and-scope.md). The product comparison is in the [existing-solutions evaluation](../../research/existing-solutions-comparison.md).
 
@@ -20,11 +20,15 @@ Full requirements, scenarios, acceptance criteria, and portfolio rationale are i
 
 ## Data Separation
 
-- **RAW:** original imported files, preserved byte-for-byte and identified by hash. No normalization or editing modifies them.
+- **RAW:** original archives and imported binaries, including images and attachments, preserved byte-for-byte and identified by hash. No normalization or editing modifies them.
 - **INDEX:** normalized data for search and synchronization, with references to originating RAW files and records.
-- **DERIVED:** extracted text, chunks, embeddings, entities, relationships, summaries, and inferred claims. These can be rebuilt or marked reviewed without modifying RAW.
+- **DERIVED:** extracted text, thumbnails, OCR, chunks, embeddings, entities, relationships, summaries, and inferred claims. These can be rebuilt or marked reviewed without modifying RAW; visual processing is optional and preferably local.
 
-The source-of-truth schema will include sources and imports, conversations/documents, messages, attachments, people/entities, claims and relationships, provenance, search passages, and sync events. Extracted facts link to the exact source and passage supporting them, and retain their state (derived, verified, or disputed).
+The initial canonical schema uses SQLite and versioned SQL migrations, as recorded in [ADR-0001](../../decisions/0001-sqlite-local-data-foundation.md). The base migration models sources/imports, conversations/messages, raw objects and attachments, documents, entities, claims, relations, and provenance. Search passages and synchronization events are added in their respective phases. Extracted facts link to their supporting source and retain a state (derived, confirmed, or contested).
+
+## GitHub and Personal-Data Boundary
+
+The GitHub repository and portfolio use synthetic data only. The user’s real conversations and ChatGPT archive are used only in the local Personal Memory instance. Keep RAW, INDEX, DERIVED, backups, ingestion logs, and outputs derived from private data outside tracked Git content. Configure exclusions before importing the real archive. Generate synthetic demo data independently rather than anonymizing the user’s conversations. Importer validation against a copy of the actual archive may happen locally; its content and outputs are not published.
 
 ## ChatGPT Import Without Assumptions
 
@@ -36,16 +40,16 @@ The first search phase uses full-text and filters by source, date, and entity. S
 
 ## Interface
 
-The Windows/Android interface provides search, sourced results, conversation/document views, entity and relationship exploration, sync status, and provenance inspection. Editing and claim verification are explicit actions. Android uses the same API and provenance conventions as AI services.
+The Windows/Android interface provides search, sourced results, conversation/document and attached image/file views, entity and relationship exploration, sync status, and provenance inspection. Editing and claim verification are explicit actions. Android uses the same API and provenance conventions as AI services.
 
 ## Incremental Delivery
 
 1. **Data contract and local core:** schema, migrations, RAW/INDEX/DERIVED directories, provenance, and Windows configuration.
 2. **Search and API:** full-text search, versioned endpoints, and shared client contract.
-3. **Android client and LAN sync:** local cache, pairing, synchronization, and offline search.
+3. **Android client and LAN sync:** local cache, pairing, synchronization, and offline search, including transfer of attachments for offline access.
 4. **Exploration and graph:** search/map interface and provenance-aware claims.
 5. **AI adapters:** MCP for local clients, local embeddings, and ChatGPT integration where supported.
-6. **ChatGPT import:** after the archive arrives, inspect it and implement an appropriate adapter.
+6. **ChatGPT import:** after the archive arrives, inspect the real conversation, image, and file-attachment formats and implement an appropriate adapter.
 
 Each slice remains usable and additive. Imports, indexes, and derived data must be rebuildable without losing the raw source.
 

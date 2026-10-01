@@ -7,7 +7,7 @@
 
 ## 1. Rezumat
 
-Personal Memory este un sistem personal, local-first, care adună conversații și alte surse într-un depozit controlat de utilizator. Depozitul trebuie să rămână util independent de furnizorul AI sau de interfața folosită: ChatGPT, un model local precum Qwen, OpenCode, Hermes ori o interfață proprie.
+Personal Memory este un sistem personal, local-first, care adună conversații și alte surse într-un depozit controlat de utilizator. Depozitul trebuie să rămână util independent de furnizorul AI sau de interfața folosită: ChatGPT, modele locale precum Qwen, gpt-oss-20b și Gemma 4, agenți/harness-uri precum OpenCode și Hermes ori o interfață proprie.
 
 Sistemul păstrează sursele originale separat de conținutul normalizat, indexuri și concluzii generate. Permite căutare full-text și semantică, navigarea conversațiilor și relațiilor, urmărirea fiecărui rezultat până la sursă, precum și acces de pe PC Windows și Android. PC-ul este planificat ca gazdă și sursă principală de adevăr; telefonul poate deține o copie locală/cache pentru utilizare offline și sincronizare ulterioară în rețeaua de acasă.
 
@@ -29,11 +29,12 @@ Utilizatorul lucrează pe Windows, păstrează proiectele pe `D:\AI`, folosește
 6. Folosire de pe Windows și Android; acces în LAN în prima etapă și suport offline pe telefon în măsura stabilită prin prototip.
 7. API și adaptoare care permit reutilizarea aceluiași depozit de către aplicații și agenți diferiți.
 8. Import ChatGPT fără presupuneri despre schema exportului; implementarea parserului începe doar după primirea și inspecția arhivei reale.
-9. Documentarea diferențierii față de produse existente și prezentarea onestă a capabilităților implementate în portofoliu.
+9. Includerea imaginilor și fișierelor atașate în depozitul local, cu păstrarea originalelor, legătură către sursă și acces pe PC/Android.
+10. Documentarea diferențierii față de produse existente și prezentarea onestă a capabilităților implementate în portofoliu.
 
 ## 4. Non-obiective și limite
 
-- Nu reconstruim un model lingvistic și nu încercăm să înlocuim ChatGPT, Qwen, OpenCode sau Hermes.
+- Nu reconstruim un model lingvistic și nu încercăm să înlocuim ChatGPT, modelele locale Qwen, gpt-oss-20b și Gemma 4, sau agenții/harness-urile OpenCode și Hermes.
 - Nu presupunem că o integrare MCP este disponibilă în toate aplicațiile ChatGPT; verificăm transportul, planul și clientul concret la momentul integrării.
 - Nu inventăm structura exportului ChatGPT înainte de a o inspecta.
 - Nu modificăm arhivele originale și nu promovăm automat extracțiile la fapte certe.
@@ -70,13 +71,13 @@ Utilizatorul lucrează pe Windows, păstrează proiectele pe `D:\AI`, folosește
 
 ### F-01 — Surse și importuri
 
-Fiecare ingestie are identificator, tip de sursă, momentul importului, versiune de adaptor și rezultat. Sursele pot proveni din arhive, documente sau importuri ulterioare. Un import păstrează originalele, descrie ce a procesat și permite reluare fără duplicate.
+Fiecare ingestie are identificator, tip de sursă, momentul importului, versiune de adaptor și rezultat. Sursele pot proveni din arhive, documente, imagini, fișiere atașate sau importuri ulterioare. Un import păstrează originalele, descrie ce a procesat și permite reluare fără duplicate.
 
 ### F-02 — Separarea datelor
 
-- **RAW:** copii originale, read-only după ingestie, hash SHA-256 și metadate minime; păstrate byte-cu-byte.
-- **INDEX:** model canonic normalizat, conținut utilizabil pentru listare/căutare și indici lexicali/vectoriali regenerabili.
-- **DERIVED:** fragmente, extrase, rezumate, embeddings, entități, relații și afirmații. Fiecare element derivat indică metoda/modelul, versiunea, timpul și sursa/pasajul relevant.
+- **RAW:** arhiva sursă și binarele originale ale imaginilor/fișierelor, read-only după ingestie, păstrate byte-cu-byte și identificate prin SHA-256.
+- **INDEX:** model canonic, metadatele fișierelor și legăturile dintre atașamente, mesaje și surse; indici lexicali/vectoriali regenerabili.
+- **DERIVED:** fragmente, text extras, miniaturi, OCR, embeddings, rezumate, entități, relații și afirmații. Fiecare rezultat derivat păstrează proveniența și versiunea procesorului/modelului.
 
 Reindexarea șterge și reconstruiește numai structurile regenerabile, nu RAW.
 
@@ -94,17 +95,25 @@ Graful păstrează entități, relații și afirmații ca date derivate, cu prov
 
 ### F-06 — API și MCP
 
-API-ul versionat reprezintă contractul comun pentru UI și integrații. MCP expune inițial căutare și citire; fiecare rezultat include provenance. Scrierea prin agenți se activează separat, după definirea aprobării, validării și jurnalului de modificări. Adaptoarele pentru ChatGPT, Qwen, OpenCode și Hermes sunt componente opționale și nu schimbă modelul de date.
+API-ul versionat reprezintă contractul comun pentru UI și integrații. MCP expune inițial căutare și citire; fiecare rezultat include provenance. Scrierea prin agenți se activează separat, după definirea aprobării, validării și jurnalului de modificări. Adaptoarele pentru modelele locale Qwen, gpt-oss-20b și Gemma 4, precum și clienții/agenții ChatGPT, OpenCode și Hermes, sunt componente opționale și nu schimbă modelul de date.
 
 **Limită ChatGPT:** documentația oficială OpenAI verificată la 2026-10-01 spune că aplicațiile MCP sunt disponibile numai pe web, nu pe mobil; ChatGPT se conectează la servere MCP remote, nu direct la un server local. Pentru un server în rețeaua privată, este necesar un Secure MCP Tunnel în produsele OpenAI care îl suportă. Disponibilitatea developer mode și a acțiunilor complete MCP depinde de plan și workspace. Prin urmare, UI/API-ul propriu pentru Android rămâne necesar; integrarea ChatGPT este o cale web opțională, nu singura interfață mobilă. [OpenAI: Developer mode and MCP apps in ChatGPT](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt).
 
 ### F-07 — PC, Android și sincronizare
 
-PC-ul găzduiește serviciul și copia principală. Android se conectează în LAN și poate păstra o replică/cache locală. Sincronizarea transferă schimbări identificate/versionate și detectează conflictele; nu pierde variante. Protocolul exact și clientul PWA versus nativ se aleg după prototip și verificarea cerințelor offline.
+PC-ul găzduiește serviciul și copia principală. Android se conectează în LAN și poate păstra o replică/cache locală, inclusiv atașamentele sincronizate pentru acces offline. Sincronizarea transferă schimbări identificate/versionate și fișiere, poate relua transferuri întrerupte și detectează conflictele; nu pierde variante. Protocolul exact și clientul PWA versus nativ se aleg după prototip și verificarea cerințelor offline.
 
 ### F-08 — Interfață
 
-Interfața oferă căutare, listă de rezultate, vizualizare conversație/document cu salt la pasaj, hartă a entităților și relațiilor, inspector de provenance, stare de sincronizare și flux de import. Interfața trebuie să facă vizibilă diferența dintre sursă și inferență.
+Interfața oferă căutare, listă de rezultate, vizualizare conversație/document cu salt la pasaj, hartă a entităților și relațiilor, inspector de provenance, stare de sincronizare și flux de import. Afișează imaginile și previzualizările de fișiere în contextul sursei și oferă acces la original. Interfața trebuie să facă vizibilă diferența dintre sursă și inferență.
+
+### F-10 — Imagini și fișiere atașate
+
+Sistemul importă și păstrează fișierele/imaginile atașate conversațiilor și documentelor, inclusiv formatele pentru care încă nu există extractor. Fișierul original rămâne intact în RAW și primește hash, nume, tip MIME observat, dimensiune și proveniență către sursa și mesajul de origine, când aceste informații există. Atașamentul rămâne accesibil din contextul conversației pe PC și Android; interfața poate afișa imaginea sau o previzualizare acceptată și permite deschiderea/descărcarea originalului.
+
+Textul se extrage și se indexează numai pentru formatele pe care procesorii configurați le suportă. Pentru imagini, OCR, descriere vizuală și embeddings vizuale sunt capabilități derivate opționale, preferabil procesate local. Fișierele necunoscute sau imposibil de citit nu blochează importul: se păstrează, se leagă de sursă și pot fi găsite după nume/metadate. Miniaturile, OCR-ul și textul extras sunt regenerabile și nu înlocuiesc originalele. Transferul fișierelor către replica Android suportă reluarea transferurilor întrerupte și acces offline la elementele sincronizate.
+
+Criteriu de acceptare: originalul poate fi deschis sau recuperat cu hash identic după import; atașamentul are legătură navigabilă către sursă; conținutul suportat poate fi căutat; tipurile necunoscute sunt păstrate și raportate.
 
 ### F-09 — Backup, confidențialitate și portabilitate
 
@@ -161,13 +170,22 @@ Proiectul poate demonstra:
 - arhitectură local-first cu responsabilități RAW/INDEX/DERIVED;
 - pipeline de ingestie rezilient, idempotent și explicabil;
 - provenance și modelare a datelor/grafului;
-- căutare lexicală și semantică cu modele locale;
+- căutare lexicală și semantică cu modele locale precum Qwen, gpt-oss-20b și Gemma 4;
 - API/MCP și integrare multi-agent;
 - acces PC/Android, LAN, sincronizare offline și tratarea conflictelor;
 - decizii de confidențialitate, backup și portabilitate;
 - livrare incrementală și documentație tehnică.
 
-Portofoliul va arăta demo cu date sintetice sau autorizate, arhitectura, alternativele, deciziile, capturi și limitări. Nu va publica conversații personale, arhive reale, credențiale ori rezultate care dezvăluie date private. Nu se va afirma că o funcție este completă până când există o demonstrație verificabilă.
+Demo-urile, capturile, fixture-urile și toate datele din repo-ul GitHub vor folosi exclusiv date sintetice. Conversațiile și arhiva reale ale utilizatorului se folosesc doar local în instanța Personal Memory. Nu se publică și nu se comit arhive, RAW, extrase, indexuri, embeddings, loguri, capturi sau rezultate care conțin date personale. Nu se afirmă că o funcție este completă până când există o demonstrație verificabilă.
+
+## Politica de date pentru GitHub și utilizare locală
+
+- Repo-ul GitHub, inclusiv commit-urile și materialele de portofoliu, conține numai cod, documentație și date sintetice create special pentru demonstrații.
+- Datele sintetice nu se obțin prin anonimizarea conversațiilor reale; se generează separat pentru a evita scurgeri prin detalii sau metadate.
+- Arhiva ChatGPT și conversațiile personale se importă numai în instanța locală configurată de utilizator. Nu se copiază în directoarele urmărite de Git.
+- RAW, INDEX, DERIVED, backup-urile, logurile de ingestie și artefactele generate din surse personale sunt locale și excluse din Git. Configurația repository-ului trebuie să asigure acest lucru înainte de importul real.
+- Prototipurile, walkthrough-urile și materialele publice folosesc date sintetice. Corectitudinea importer-ului poate fi verificată suplimentar local, pe o copie a arhivei reale, fără publicarea conținutului, rezultatelor sau capturilor.
+- Erorile și logurile nu trebuie să includă implicit textul mesajelor sau conținutul privat al fișierelor.
 
 ## 11. Faze de livrare și criterii de acceptare
 
@@ -189,18 +207,21 @@ Portofoliul va arăta demo cu date sintetice sau autorizate, arhitectura, altern
 
 ### Faza 3 — Importer ChatGPT
 
-- După primirea arhivei, inventariază formatele reale; păstrează arhiva brută și implementează parser/adaptor pentru ceea ce s-a observat.
-- Acceptare: raport complet, import reluabil, necunoscute păstrate/raportate, proveniență verificabilă.
+- După primirea arhivei, inventariază formatele reale, inclusiv cum sunt reprezentate imaginile și fișierele atașate; păstrează arhiva brută local și implementează parser/adaptor pentru ceea ce s-a observat.
+- Acceptare: raport complet, import reluabil, necunoscute păstrate/raportate, proveniență verificabilă și atașamente păstrate cu legătura către mesaj; verificarea pe copia arhivei reale se face numai local și nu se include în Git.
 
 ### Faza 4 — UI PC/Android și graph
 
 - Căutare, context, provenance, explorare grafică, acces LAN și cache/sync incremental.
-- Acceptare: utilizare demonstrată pe PC și Android; conflictele nu dispar fără avertisment.
+- Adaugă galerie/previzualizare pentru imagini și fișiere suportate, acces la original și disponibilitate offline pentru atașamentele sincronizate.
+- Acceptare: utilizare demonstrată pe PC și Android; fișierele se deschid din mesajul de origine, iar conflictele și transferurile incomplete sunt vizibile.
 
 ### Faza 5 — Semantic search și modele locale
 
-- Provider embeddings local configurabil, metadate model/versionare, fuziune lexicală/semantică.
-- Acceptare: rezultate semantice provin din pasaje identificabile; re-embedding nu schimbă RAW.
+- Integrează modele locale precum Qwen, gpt-oss-20b și Gemma 4 prin runtime-uri compatibile.
+- Provider embeddings local configurabil, metadate model/versionare, fuziune lexicală/semantică pentru textul extras din formatele suportate.
+- OCR/descriere/embeddings vizuale pot fi adăugate ca procesare derivată locală, fără a înlocui imaginea originală.
+- Acceptare: rezultate semantice provin din pasaje/atașamente identificabile; re-embedding nu schimbă RAW.
 
 ### Faza 6 — MCP și clienți
 
@@ -219,13 +240,12 @@ Portofoliul va arăta demo cu date sintetice sau autorizate, arhitectura, altern
 - **Offline și replicare complexe:** prototip și măsurare înainte de alegerea PWA/nativ și protocol sync.
 - **Inferențe inexacte:** stări de verificare și citate; utilizatorul păstrează controlul faptelor.
 - **Creștere de scope:** faze cu criterii de acceptare și reutilizare de produse existente unde păstrează cerințele centrale.
-- **Disponibilitatea modelelor locale:** nucleul funcționează lexical fără embeddings; providerul semantic poate fi configurat ulterior.
+- **Disponibilitatea modelelor locale:** nucleul funcționează lexical fără embeddings; providerul semantic poate fi configurat ulterior pentru Qwen, gpt-oss-20b, Gemma 4 sau alte modele compatibile.
 
 ## 13. Istoricul deciziilor
 
-- **2026-10-01:** utilizatorul a confirmat PC-ul și Android ca dispozitive țintă, conectarea de regulă prin aceeași rețea de acasă, depozitul în `D:\AI\PersonalMemory`, GitHub pentru versionare, arhiva ChatGPT ulterioară și integrarea cu Qwen/OpenCode/Hermes.
+- **2026-10-01:** utilizatorul a confirmat PC-ul și Android ca dispozitive țintă, conectarea de regulă prin aceeași rețea de acasă, depozitul în `D:\AI\PersonalMemory`, GitHub pentru versionare, arhiva ChatGPT ulterioară și integrarea cu modelele locale Qwen, gpt-oss-20b și Gemma 4, precum și clienții/agenții OpenCode și Hermes.
 - **2026-10-01:** utilizatorul a confirmat dezvoltarea proprie dacă produsele existente nu acoperă cerințele și a cerut ca motivația comparativă și valoarea adăugată să fie documentate ca proiect de portofoliu.
 - **2026-10-01:** documentația OpenAI consultată confirmă că MCP apps sunt web-only, se conectează la servere remote, iar serverele din rețele private pot necesita Secure MCP Tunnel; accesul MCP mobil direct nu este presupus.
+- **2026-10-01:** utilizatorul a stabilit că repo-ul GitHub va conține doar date sintetice pentru o posibilă publicare open source; conversațiile personale se folosesc exclusiv local în instanța creată.
 - Exportul ChatGPT nu a fost încă inspectat; schema lui rămâne necunoscută.
-
-

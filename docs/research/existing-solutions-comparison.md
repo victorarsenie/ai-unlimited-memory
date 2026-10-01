@@ -10,8 +10,8 @@
 - Datele importate originale se păstrează intacte separat de indexuri și date derivate.
 - Căutarea lexicală și semantică întoarce proveniență verificabilă spre conversația/documentul sursă.
 - Conversațiile și cunoștințele se explorează prin căutare și hartă relațională.
-- Importer-ul ChatGPT se scrie după inspectarea arhivei reale, fără presupunerea formatului.
-- Nucleul poate fi folosit ulterior de un model local Qwen și de clienți precum OpenCode, Hermes și ChatGPT, prin adaptoare stabile.
+- Importer-ul ChatGPT se scrie după inspectarea arhivei reale, fără presupunerea formatului; imaginile și fișierele atașate trebuie păstrate și legate de mesajul sursă.
+- Nucleul poate fi folosit ulterior de modele locale precum Qwen, gpt-oss-20b și Gemma 4, precum și de clienți/agenți precum OpenCode, Hermes și ChatGPT, prin adaptoare stabile.
 - Importurile, indexurile și memoria derivată pot fi reconstruite din sursele păstrate; accesul mobil și backup-ul au un comportament clar.
 
 ## Comparație

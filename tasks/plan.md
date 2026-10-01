@@ -13,7 +13,7 @@ Documentația detaliată a cerințelor, scopului și valorii de portofoliu este 
 - Înainte de a scrie cod, compară aplicațiile existente cu cerințele și încearcă configurația celei mai potrivite. Construim componente proprii doar pentru golurile confirmate. Dacă nucleul propriu rămâne necesar, varianta inițială este SQLite/FTS5 și API Python/FastAPI; runtime-ul se alege după verificarea mediului.
 - Importer-ul ChatGPT va fi modular: întâi contractul și interfața adaptorului, apoi parserul concret numai după primirea arhivei reale și inspectarea structurii sale.
 - Pentru Android se începe cu o interfață web instalabilă și accesibilă în rețeaua locală. Sincronizarea offline bidirecțională și aplicația nativă se decid după validarea prototipului și a cerințelor reale de utilizare.
-- MCP, Qwen, OpenCode și Hermes se adaugă ca adaptoare peste API și modelul de date stabile, nu ca dependențe ale nucleului.
+- Modelele locale Qwen, gpt-oss-20b și Gemma 4, plus clienții/agenții ChatGPT, OpenCode și Hermes, se conectează prin adaptoare peste API-ul și modelul de date stabile; niciunul nu devine dependență a nucleului.
 - Fiecare etapă păstrează provenance (sursa, locatorul, timpul importului, transformarea și identificatorii legați) și oferă operații de reindexare fără modificarea RAW.
 
 ## Etape și criterii de acceptare
@@ -33,7 +33,7 @@ Comparația inițială este documentată în [`docs/research/existing-solutions-
 
 - Inspectează mediul și documentația existentă; consemnează alegerile efective de runtime și structura directoarelor.
 - Definește structura `RAW/`, `INDEX/`, `DERIVED/`, configurarea locală și regulile de backup.
-- Definește schema inițială pentru surse, conversații, mesaje, atașamente, entități, relații și provenance; folosește migrații versionate.
+- Definește schema inițială pentru surse, conversații, mesaje, binare/atașamente, entități, relații și provenance; folosește migrații versionate și stochează hash, nume, tip MIME și dimensiune.
 - Criteriu: un depozit gol poate fi inițializat reproductibil; datele sursă nu sunt suprascrise de transformări sau reindexare.
 - Verificare: revizuire manuală a schemei, directoarelor și instrucțiunilor de inițializare.
 
@@ -43,36 +43,39 @@ Comparația inițială este documentată în [`docs/research/existing-solutions-
 - Configurează SQLite FTS5 pentru căutare lexicală, filtrare și navigarea rezultatelor către sursă.
 - Adaugă import generic documentat pentru conținut textual și metadate, fără a pretinde compatibilitate cu un export ChatGPT neinspectat.
 - Criteriu: utilizatorul poate adăuga, căuta și deschide conținut indexat; fiecare rezultat indică sursa și locația sa.
-- Verificare: walkthrough manual pe date sintetice clar etichetate, fără date personale reale.
+- Verificare: walkthrough manual pe date sintetice clar etichetate, fără date personale reale. Prototipurile și fixturile comise/publicate sunt exclusiv sintetice.
 
 ### 3. Importer modular ChatGPT
 
 - Definește interfața adaptorului, raportul de import și politica pentru fișiere repetate, atașamente și erori.
 - După disponibilitatea arhivei, inspectează structura și documentația inclusă înainte de a implementa parserul concret.
+- Inventariază atașamentele efectiv întâlnite; păstrează originalele byte-cu-byte, leagă-le de mesajele sursă și raportează formatele necunoscute fără să oprească importul.
 - Păstrează fișierele originale exact; scrie extrasele și indexurile doar în zonele destinate.
 - Criteriu: importul este reluabil/idempotent, raportează ce a acceptat sau respins și permite refacerea indexurilor din RAW.
-- Verificare: validare manuală pe copii ale arhivei reale, cu controlul numărului de elemente și al provenienței.
+- Verificare: validare locală, privată, pe o copie a arhivei reale, cu controlul numărului de elemente și al provenienței; datele și rezultatele nu intră în Git.
 
 ### 4. Interfață de explorare și acces Android în LAN
 
 - Construiește UI pentru căutare, navigarea conversațiilor/surselor și inspectarea provenienței.
 - Adaugă vizualizarea grafului ca strat de explorare peste entități și relații aprobate/derivate.
 - Configurează acces local controlat, instrucțiuni clare pentru PC și telefon și comportament util când serverul nu este disponibil.
+- Adaugă previzualizări pentru imaginile și fișierele suportate, acces la original și transferuri reluabile pentru atașamentele sincronizate offline.
 - Criteriu: PC-ul și telefonul din aceeași rețea pot accesa sistemul; UI afișează sursa și legăturile fără a expune directoarele brute.
 - Verificare: walkthrough manual pe PC și Android în rețeaua locală.
 
 ### 5. Semantic search și integrare locală
 
-- Adaugă interfață de embeddings interschimbabilă, cu provider local Qwen sau alt runtime configurat ulterior.
+- Integrează modele locale precum Qwen, gpt-oss-20b și Gemma 4 prin runtime-uri compatibile; configurează embeddings printr-un provider interschimbabil separat, cu metadate de versiune.
 - Stochează vectorii doar în INDEX/DERIVED și leagă fiecare vector de versiunea modelului și textul sursă.
 - Adaugă căutare semantică și fuziune cu căutarea FTS, fără a cere un model cloud.
+- Indexează text extras din formatele suportate; tratează OCR-ul, descrierea vizuală și embeddings vizuale drept procesări locale opționale în DERIVED.
 - Criteriu: schimbarea modelului permite re-embedding fără atingerea RAW; rezultatele păstrează proveniența.
 - Verificare: walkthrough manual cu un model local disponibil; dacă lipsește, documentează clar funcționalitatea amânată.
 
 ### 6. MCP bridge și adaptoare pentru agenți
 
 - Publică un MCP bridge cu un set restrâns de operații read-only inițial: căutare, citire, hartă și provenance.
-- Separă adaptoarele pentru ChatGPT, OpenCode și Hermes de serverul și schema centrale.
+- Separă adaptoarele pentru ChatGPT și agenții/harness-urile OpenCode și Hermes de serverul și schema centrale; acestea pot apela modele locale precum Qwen, gpt-oss-20b sau Gemma 4.
 - Adaugă operații de scriere numai după definirea autorizării, validării și jurnalizării modificărilor.
 - Criteriu: clienții suportati pot găsi și citi aceleași date prin API/MCP, iar sursa fiecărui rezultat este vizibilă.
 - Verificare: conectare manuală per client, după confirmarea suportului și setărilor clientului.
@@ -87,7 +90,7 @@ Comparația inițială este documentată în [`docs/research/existing-solutions-
 
 ## Ordinea dependențelor
 
-Fundație → API și FTS → importer concret (după arhivă) și UI/LAN → semantic search și MCP → sincronizare/întărire. UI prototip poate începe după ce API-ul și modelul minim sunt stabile. Qwen/OpenCode/Hermes rămân adaptoare ulterioare.
+Fundație → API și FTS → importer concret (după arhivă) și UI/LAN → semantic search și MCP → sincronizare/întărire. UI prototip poate începe după ce API-ul și modelul minim sunt stabile. Qwen, gpt-oss-20b și Gemma 4 sunt modele locale vizate; OpenCode și Hermes sunt clienți/agenți integrați ulterior.
 
 ## În afara primei felii
 

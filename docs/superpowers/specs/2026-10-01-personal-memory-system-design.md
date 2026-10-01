@@ -7,7 +7,7 @@
 
 Construim incremental un sistem personal de memorie accesibil de pe Windows și Android. PC-ul găzduiește serviciile și copia principală; telefonul păstrează o copie locală, cautabilă offline, pe care o sincronizează cu PC-ul când ambele sunt conectate la aceeași rețea Wi-Fi. Accesul din afara casei poate fi adăugat ulterior printr-o rețea privată precum Tailscale.
 
-Sistemul trebuie să păstreze sursele intacte, să arate proveniența fiecărei informații și să poată alimenta ulterior Qwen local, OpenCode și Hermes. Integrarea ChatGPT este o țintă separată și opțională. La 2026-10-01, documentația OpenAI spune că aplicațiile MCP sunt web-only, nu mobile; ChatGPT se conectează la servere MCP remote, iar un server dintr-o rețea privată poate necesita Secure MCP Tunnel. Accesul și acțiunile disponibile depind de plan/client. Aplicația proprie Android rămâne calea mobilă directă. [Sursa OpenAI](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt).
+Sistemul trebuie să păstreze sursele intacte, inclusiv imaginile și fișierele atașate, să arate proveniența fiecărei informații și să poată alimenta ulterior modele locale precum Qwen, gpt-oss-20b și Gemma 4, precum și agenți/harness-uri ca OpenCode și Hermes. Integrarea ChatGPT este o țintă separată și opțională. La 2026-10-01, documentația OpenAI spune că aplicațiile MCP sunt web-only, nu mobile; ChatGPT se conectează la servere MCP remote, iar un server dintr-o rețea privată poate necesita Secure MCP Tunnel. Accesul și acțiunile disponibile depind de plan/client. Aplicația proprie Android rămâne calea mobilă directă. [Sursa OpenAI](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt).
 
 Cerințele complete, scenariile, criteriile și justificarea de portofoliu sunt în [documentul de cerințe](../../project/requirements-and-scope.md). Comparația produselor existente este în [evaluarea soluțiilor](../../research/existing-solutions-comparison.md).
 
@@ -20,11 +20,15 @@ Cerințele complete, scenariile, criteriile și justificarea de portofoliu sunt 
 
 ## Separarea datelor
 
-- **RAW:** fișierele originale primite/importate, păstrate byte-cu-byte și identificate prin hash. Nicio normalizare sau editare nu le modifică.
+- **RAW:** arhivele și binarele originale primite/importate, inclusiv imagini și atașamente, păstrate byte-cu-byte și identificate prin hash. Nicio normalizare sau editare nu le modifică.
 - **INDEX:** date normalizate pentru căutare și sincronizare, cu referințe către fișierele și înregistrările RAW de origine.
-- **DERIVED:** text extras, fragmente, embeddings, entități, relații, rezumate și afirmații deduse. Acestea pot fi reconstruite sau marcate ca revizuite fără a modifica RAW.
+- **DERIVED:** text extras, miniaturi, OCR, fragmente, embeddings, entități, relații, rezumate și afirmații deduse. Acestea pot fi reconstruite sau marcate ca revizuite fără a modifica RAW; procesarea vizuală este opțională și preferabil locală.
 
-Schema sursă de adevăr va include surse și importuri, conversații/documente, mesaje, persoane/entități, afirmații și relații, proveniență, fragmente de căutare și evenimente de sincronizare. Faptele extrase vor păstra referința exactă la sursa și pasajul care le justifică, precum și starea lor (derivat, verificat sau contestat).
+Schema canonică inițială folosește SQLite și migrații SQL versionate, conform [ADR-0001](../../decisions/0001-sqlite-local-data-foundation.md). Migrarea de bază modelează surse/importuri, conversații/mesaje, obiecte brute și atașamente, documente, entități, afirmații, relații și provenance. Fragmentele de căutare și evenimentele de sincronizare se adaugă în etapele lor. Faptele extrase păstrează referința la sursa justificativă și starea lor (derivat, confirmat sau contestat).
+
+## Delimitarea datelor personale și GitHub
+
+The GitHub repository and portfolio use synthetic data only. The user's real conversations and ChatGPT archive are used only in the local Personal Memory instance. Keep RAW, INDEX, DERIVED, backups, ingestion logs, and outputs derived from private data outside tracked Git content. Configure exclusions before importing the real archive. Synthetic demo data is generated independently, not by anonymizing the user's conversations. Importer validation against a copy of the actual archive may happen locally; its content and outputs are not published.
 
 ## Import ChatGPT fără presupuneri
 
@@ -36,16 +40,16 @@ Prima etapă de căutare folosește full-text și filtre după sursă, dată și
 
 ## Interfață
 
-Interfața Windows/Android oferă căutare, rezultate cu surse, vizualizarea conversațiilor/documentelor, explorarea entităților și relațiilor, stare de sincronizare și inspectarea provenienței. Editările și validarea afirmațiilor sunt acțiuni explicite. Interfața de pe Android folosește aceeași API și aceleași convenții de proveniență ca serviciile AI.
+Interfața Windows/Android oferă căutare, rezultate cu surse, vizualizarea conversațiilor/documentelor și a imaginilor/fișierelor atașate, explorarea entităților și relațiilor, stare de sincronizare și inspectarea provenienței. Editările și validarea afirmațiilor sunt acțiuni explicite. Interfața de pe Android folosește aceeași API și aceleași convenții de proveniență ca serviciile AI.
 
 ## Livrare incrementală
 
 1. **Contract și nucleu local:** schema, migrații, directoarele RAW/INDEX/DERIVED, proveniența și configurarea Windows.
 2. **Căutare și API:** full-text, endpointuri versionate și contractul comun pentru clienți.
-3. **Client Android și sincronizare LAN:** cache local, asociere sigură, sincronizare și căutare offline.
+3. **Client Android și sincronizare LAN:** cache local, asociere sigură, sincronizare și căutare offline, inclusiv transferul fișierelor atașate pentru acces offline.
 4. **Explorare și graf:** interfață de căutare/hartă și afirmații cu proveniență.
 5. **Adaptoare AI:** MCP pentru clienții locali, embeddings locale și integrarea ChatGPT acolo unde este suportată.
-6. **Import ChatGPT:** după sosirea arhivei, inspectare reală și implementarea adaptorului potrivit.
+6. **Import ChatGPT:** după sosirea arhivei, inspectare reală a formatelor conversațiilor, imaginilor și fișierelor atașate și implementarea adaptorului potrivit.
 
 Fiecare felie rămâne utilizabilă și aditivă. Importul, indexurile și datele derivate trebuie să poată fi reconstruite fără pierderea sursei brute.
 

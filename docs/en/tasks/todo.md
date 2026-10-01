@@ -19,7 +19,7 @@ The detailed plan is in [plan.md](plan.md). The initial product comparison is in
 
 - [ ] Inspect the available runtime and repository instructions.
 - [ ] Define RAW / INDEX / DERIVED contracts and RAW preservation rules.
-- [ ] Define the initial schema and versioned migrations.
+- [ ] Define the initial schema and versioned migrations, including attachment binary metadata, hashes, and source links.
 - [ ] Document local initialization and backup.
 - [ ] Manual acceptance review.
 
@@ -34,27 +34,28 @@ The detailed plan is in [plan.md](plan.md). The initial product comparison is in
 
 - [ ] Inspect the archive and inventory its real formats.
 - [ ] Implement an adapter based on the observed format.
-- [ ] Preserve RAW and ensure retryable import with a results report.
-- [ ] Manually verify using copies of the archive.
+- [ ] Preserve RAW and ensure retryable import with a results report, including attached images/files and their source-message links.
+- [ ] Verify locally and privately using a copy of the archive; do not put data or results in Git.
 
 ## Phase 4 — UI and Android on LAN
 
 - [ ] Search, exploration, and provenance UI.
 - [ ] Entity and relationship map.
+- [ ] Image/file previews, original access, and offline access to synced attachments on Android.
 - [ ] Local Android access and a message for when the PC is unavailable.
 - [ ] Manual PC + Android walkthrough.
 
 ## Phase 5 — Semantic Search
 
 - [ ] Replaceable embeddings provider and version metadata.
-- [ ] Integrate with an available local runtime.
+- [ ] Integrate local models Qwen, gpt-oss-20b, and Gemma 4 through compatible runtimes.
 - [ ] Combined FTS + semantic search.
 - [ ] Manual walkthrough or documentation of missing local dependencies.
 
 ## Phase 6 — MCP and Adapters
 
 - [ ] Initially read-only MCP bridge.
-- [ ] Adapters for confirmed clients: ChatGPT, OpenCode, Hermes.
+- [ ] Adapters for ChatGPT and the OpenCode and Hermes agent harnesses.
 - [ ] Validation and logging before any write operation.
 - [ ] Manual connection in each supported client.
 

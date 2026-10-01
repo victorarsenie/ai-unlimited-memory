@@ -7,7 +7,7 @@
 
 ## 1. Summary
 
-Personal Memory is a local-first personal system that brings conversations and other sources into a repository controlled by the user. The repository must remain useful independently of the AI provider or interface: ChatGPT, a local model such as Qwen, OpenCode, Hermes, or a purpose-built interface.
+Personal Memory is a local-first personal system that brings conversations and other sources into a repository controlled by the user. The repository must remain useful independently of the AI provider or interface: ChatGPT, local models such as Qwen, gpt-oss-20b, and Gemma 4, agent harnesses such as OpenCode and Hermes, or a purpose-built interface.
 
 The system preserves original sources separately from normalized content, indexes, and generated knowledge. It supports full-text and semantic search, navigation through conversations and relationships, and tracing every result back to its source. It is accessible from a Windows PC and Android. The PC is planned as the host and primary source of truth; the phone may hold a local copy or cache for offline use and later synchronization over the home network.
 
@@ -29,11 +29,12 @@ The user works on Windows, keeps projects under `D:\AI`, uses Android, and is us
 6. Use from Windows and Android; LAN access in the first phase and phone offline support to the extent established by prototyping.
 7. An API and adapters that let different applications and agents use the same repository.
 8. ChatGPT import without assumptions about the export schema; implement the parser only after receiving and inspecting the real archive.
-9. Document the project's differentiation from existing products and present implemented capabilities honestly in the portfolio.
+9. Include images and files attached to sources in the local repository, preserve originals, retain source links, and make them accessible on PC/Android.
+10. Document the project's differentiation from existing products and present implemented capabilities honestly in the portfolio.
 
 ## 4. Non-goals and Boundaries
 
-- We are not rebuilding a language model or replacing ChatGPT, Qwen, OpenCode, or Hermes.
+- We are not rebuilding a language model or replacing ChatGPT, local models Qwen, gpt-oss-20b, and Gemma 4, or the OpenCode and Hermes agent harnesses.
 - We do not assume MCP integration is available in every ChatGPT app; verify the specific transport, plan, and client when integration work begins.
 - We do not invent the ChatGPT export structure before inspecting it.
 - We do not modify original archives or automatically promote extracted content to verified facts.
@@ -70,13 +71,13 @@ The user works on Windows, keeps projects under `D:\AI`, uses Android, and is us
 
 ### F-01 — Sources and Imports
 
-Each ingestion has an identifier, source type, import time, adapter version, and outcome. Sources may be archives, documents, or later imports. An import preserves originals, describes what it processed, and can be retried without creating duplicates.
+Each ingestion has an identifier, source type, import time, adapter version, and outcome. Sources may be archives, documents, images, attachments, or later imports. An import preserves originals, describes what it processed, and can be retried without creating duplicates.
 
 ### F-02 — Data Separation
 
-- **RAW:** original received files, read-only after ingestion, with SHA-256 hashes and minimal metadata; preserved byte-for-byte.
-- **INDEX:** normalized canonical model, content for listing/search, and regenerable lexical/vector indexes.
-- **DERIVED:** passages, extracts, summaries, embeddings, entities, relationships, and claims. Each derived item records method/model, version, time, and relevant source/passage.
+- **RAW:** source archives and original image/file binaries, read-only after ingestion, preserved byte-for-byte and identified by SHA-256.
+- **INDEX:** canonical model, file metadata, and links between attachments, messages, and sources; regenerable lexical/vector indexes.
+- **DERIVED:** passages, extracted text, thumbnails, OCR, embeddings, summaries, entities, relationships, and claims. Each derived result retains provenance and processor/model version.
 
 Reindexing may delete and rebuild only regenerable structures; it must not alter RAW.
 
@@ -94,17 +95,25 @@ The graph stores entities, relationships, and claims as derived data with proven
 
 ### F-06 — API and MCP
 
-The versioned API is the shared contract for the UI and integrations. MCP initially exposes search and read operations; every result includes provenance. Agent writes are enabled separately after approval, validation, and change-log rules are defined. Adapters for ChatGPT, Qwen, OpenCode, and Hermes are optional components and do not change the data model.
+The versioned API is the shared contract for the UI and integrations. MCP initially exposes search and read operations; every result includes provenance. Agent writes are enabled separately after approval, validation, and change-log rules are defined. Adapters for local models Qwen, gpt-oss-20b, and Gemma 4, plus ChatGPT, OpenCode, and Hermes clients/agents, are optional components and do not change the data model.
 
 **ChatGPT limitation:** OpenAI's official documentation checked on 2026-10-01 says MCP apps are available on web, not mobile; ChatGPT connects to remote MCP servers, not directly to a local server. A server on a private network needs a Secure MCP Tunnel for supported OpenAI products. Developer mode and full MCP actions depend on plan and workspace. Therefore, a purpose-built Android UI/API remains necessary; ChatGPT integration is an optional web route, not the only mobile interface. [OpenAI: Developer mode and MCP apps in ChatGPT](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt).
 
 ### F-07 — PC, Android, and Synchronization
 
-The PC hosts the service and primary copy. Android connects on the LAN and may hold a local replica/cache. Synchronization transfers identified/versioned changes and detects conflicts without losing variants. Choose the exact protocol and PWA versus native client after prototyping and validating offline requirements.
+The PC hosts the service and primary copy. Android connects on the LAN and may hold a local replica/cache, including synced attachments for offline access. Synchronization transfers identified/versioned changes and files, can resume interrupted transfers, and detects conflicts without losing variants. Choose the exact protocol and PWA versus native client after prototyping and validating offline requirements.
 
 ### F-08 — Interface
 
-The interface provides search, result lists, conversation/document views with passage navigation, an entity/relationship map, provenance inspection, synchronization status, and an import flow. It must make the distinction between source and inference visible.
+The interface provides search, result lists, conversation/document views with passage navigation, an entity/relationship map, provenance inspection, synchronization status, and an import flow. It previews supported images/files in source context and provides access to originals. It must make the distinction between source and inference visible.
+
+### F-10 — Images and File Attachments
+
+The system imports and preserves image/file attachments from conversations and documents, including formats without an available extractor. Keep each original intact in RAW and record its hash, name, observed MIME type, size, and provenance to the source/originating message where available. The attachment remains accessible from its conversation context on PC and Android; the interface can display images or supported previews and open/download the original.
+
+Extract and index content only for formats supported by configured processors. For images, OCR, visual description, and visual embeddings are optional derived capabilities, preferably processed locally. Unknown or unreadable files must not block import: preserve and link them to their source, and make them discoverable by name/metadata. Thumbnails, OCR, and extracted text are rebuildable and never replace originals. Transfer files to the Android replica with resumable transfers and offline access to synced items.
+
+Acceptance: the original can be opened/recovered with an identical hash after import; the attachment has a navigable source link; supported content is searchable; unknown types are preserved and reported.
 
 ### F-09 — Backup, Privacy, and Portability
 
@@ -161,13 +170,22 @@ The project can demonstrate:
 - local-first architecture with clear RAW/INDEX/DERIVED responsibilities;
 - a resilient, idempotent, explainable ingestion pipeline;
 - provenance and graph/data modeling;
-- lexical and semantic search with local models;
+- lexical and semantic search with local models such as Qwen, gpt-oss-20b, and Gemma 4;
 - API/MCP and multi-agent integration;
 - PC/Android access, LAN, offline sync, and conflict handling;
 - privacy, backup, and portability decisions;
 - incremental delivery and technical documentation.
 
-The portfolio should show a demo using synthetic or authorized data, architecture, alternatives, decisions, screenshots, and limitations. It must not publish personal conversations, real archives, credentials, or results that expose private data. Do not claim a feature is complete until there is a verifiable demonstration.
+Demos, screenshots, fixtures, and all data in the GitHub repository use synthetic data only. The user’s real conversations and archive are used only locally in the Personal Memory instance. Never publish or commit archives, RAW, extracts, indexes, embeddings, logs, screenshots, or results containing personal data. Do not claim a feature is complete until there is a verifiable demonstration.
+
+## GitHub and Local-Use Data Policy
+
+- The GitHub repository, including commits and portfolio materials, contains only code, documentation, and synthetic data created specifically for demonstrations.
+- Synthetic data is not produced by anonymizing real conversations; generate it separately to avoid leaks through details or metadata.
+- The ChatGPT archive and personal conversations are imported only into the user-configured local instance. Never copy them into Git-tracked directories.
+- RAW, INDEX, DERIVED, backups, ingestion logs, and artifacts generated from personal sources stay local and are excluded from Git. Configure the repository to enforce this before importing real data.
+- Prototypes, walkthroughs, and public materials use synthetic data. Importer correctness may also be checked locally against a copy of the real archive without publishing content, results, or screenshots.
+- Errors and logs must not include message text or private file content by default.
 
 ## 11. Delivery Phases and Acceptance Criteria
 
@@ -189,18 +207,21 @@ The portfolio should show a demo using synthetic or authorized data, architectur
 
 ### Phase 3 — ChatGPT Importer
 
-- After the archive arrives, inventory the real formats; preserve the raw archive and implement adapters for observed formats.
-- Acceptance: complete report, retryable import, unknowns preserved/reported, verifiable provenance.
+- After the archive arrives, inventory real formats, including how images and file attachments are represented; preserve the raw archive locally and implement adapters for observed formats.
+- Acceptance: complete report, retryable import, unknowns preserved/reported, verifiable provenance, and attachments retained with links to their messages; validation against a copy of the real archive runs locally and is not included in Git.
 
 ### Phase 4 — PC/Android UI and Graph
 
 - Search, context, provenance, graph exploration, LAN access, and incremental cache/sync.
-- Acceptance: demonstrated use on PC and Android; conflicts do not disappear without notice.
+- Add image/file gallery and supported previews, access to originals, and offline availability for synced attachments.
+- Acceptance: demonstrated use on PC and Android; files open from their source message, and conflicts/incomplete transfers are visible.
 
 ### Phase 5 — Semantic Search and Local Models
 
-- Configurable local embedding provider, model/version metadata, lexical/semantic fusion.
-- Acceptance: semantic results point to identifiable passages; re-embedding does not alter RAW.
+- Integrate local models such as Qwen, gpt-oss-20b, and Gemma 4 through compatible runtimes.
+- Configurable local embedding provider, model/version metadata, lexical/semantic fusion over text extracted from supported formats.
+- Optional local OCR/visual description/embeddings can be added as derived processing without replacing original images.
+- Acceptance: semantic results point to identifiable passages/attachments; re-embedding does not alter RAW.
 
 ### Phase 6 — MCP and Clients
 
@@ -219,11 +240,12 @@ The portfolio should show a demo using synthetic or authorized data, architectur
 - **Offline and replication complexity:** prototype and measure before choosing PWA/native and a sync protocol.
 - **Inaccurate inferences:** use verification states and citations; the user retains control of facts.
 - **Scope growth:** deliver phases with acceptance criteria and reuse existing products where central requirements are preserved.
-- **Local model availability:** the core works with lexical search without embeddings; configure semantic search later.
+- **Local model availability:** the core works with lexical search without embeddings; configure semantic search later for Qwen, gpt-oss-20b, Gemma 4, or other compatible models.
 
 ## 13. Decision History
 
-- **2026-10-01:** The user confirmed Windows PC and Android as target devices, usually on the same home network, the repository under `D:\AI\PersonalMemory`, GitHub for versioning, a later ChatGPT archive, and future integration with Qwen/OpenCode/Hermes.
+- **2026-10-01:** The user confirmed Windows PC and Android as target devices, usually on the same home network, the repository under `D:\AI\PersonalMemory`, GitHub for versioning, a later ChatGPT archive, and future integration with local models Qwen, gpt-oss-20b, and Gemma 4, plus OpenCode and Hermes clients/agents.
 - **2026-10-01:** The user confirmed building our own system if existing products do not meet the requirements, and requested documenting the comparison and added value as a portfolio project.
 - **2026-10-01:** OpenAI documentation confirms MCP apps are web-only, connect to remote servers, and may require a Secure MCP Tunnel for private-network servers; direct mobile MCP access is not assumed.
+- **2026-10-01:** The user specified that GitHub will contain synthetic data only for possible open-source publication; personal conversations will be used only locally in the created instance.
 - The ChatGPT export has not been inspected; its schema remains unknown.

@@ -19,7 +19,7 @@ Planul detaliat este în [`plan.md`](plan.md). Comparația inițială a produsel
 
 - [ ] Inspectează runtime-ul disponibil și instrucțiunile repo-ului.
 - [ ] Definește contractele RAW / INDEX / DERIVED și regulile de păstrare RAW.
-- [ ] Definește schema inițială și migrațiile versionate.
+- [ ] Definește schema inițială și migrațiile versionate, inclusiv metadatele binarelor atașate, hash-uri și legături la sursă.
 - [ ] Documentează inițializarea și backup-ul local.
 - [ ] Revizuire manuală de acceptare.
 
@@ -34,27 +34,28 @@ Planul detaliat este în [`plan.md`](plan.md). Comparația inițială a produsel
 
 - [ ] Inspectează arhiva și inventariază formatele reale.
 - [ ] Implementează adaptorul pe baza formatului observat.
-- [ ] Păstrează RAW și asigură import repetabil cu raport de rezultate.
-- [ ] Verifică manual pe copii ale arhivei.
+- [ ] Păstrează RAW și asigură import repetabil cu raport de rezultate, inclusiv imagini/fișiere atașate și legăturile lor către mesaje.
+- [ ] Verifică local și privat pe o copie a arhivei; nu include date sau rezultate în Git.
 
 ## Etapa 4 — UI și Android în LAN
 
 - [ ] UI de căutare, explorare și provenance.
 - [ ] Hartă a entităților și relațiilor.
+- [ ] Previzualizări imagini/fișiere, acces la original și acces offline la atașamentele sincronizate pe Android.
 - [ ] Acces local de pe Android și mesaj când PC-ul nu e disponibil.
 - [ ] Walkthrough manual PC + Android.
 
 ## Etapa 5 — Căutare semantică
 
 - [ ] Provider embeddings interschimbabil și metadate de versiune.
-- [ ] Integrare cu runtime local disponibil.
+- [ ] Integrează modelele locale Qwen, gpt-oss-20b și Gemma 4 prin runtime-uri compatibile.
 - [ ] Căutare combinată FTS + semantică.
 - [ ] Walkthrough manual sau documentarea dependenței locale absente.
 
 ## Etapa 6 — MCP și adaptoare
 
 - [ ] MCP bridge read-only inițial.
-- [ ] Adaptoare pentru clienții confirmați: ChatGPT, OpenCode, Hermes.
+- [ ] Adaptoare pentru ChatGPT și agenții/harness-urile OpenCode și Hermes.
 - [ ] Validare și jurnalizare înainte de orice operație de scriere.
 - [ ] Conectare manuală în fiecare client suportat.
 

@@ -10,8 +10,8 @@
 - Imported original data remains intact, separate from indexes and derived data.
 - Lexical and semantic search results include verifiable provenance to the source conversation/document.
 - Conversations and knowledge can be explored through search and a relationship map.
-- The ChatGPT importer is written after inspecting the real archive, without assumptions about its format.
-- The core can later serve local Qwen and clients such as OpenCode, Hermes, and ChatGPT through stable adapters.
+- The ChatGPT importer is written after inspecting the real archive, without assumptions about its format; image/file attachments must be preserved and linked to their source message.
+- The core can later serve local models such as Qwen, gpt-oss-20b, and Gemma 4, as well as clients/agents such as OpenCode, Hermes, and ChatGPT through stable adapters.
 - Imports, indexes, and derived memory can be rebuilt from preserved sources; mobile access and backup have clear behavior.
 
 ## Comparison

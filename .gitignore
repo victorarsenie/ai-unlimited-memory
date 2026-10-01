@@ -1,0 +1,18 @@
+# Local personal data: never commit imported conversations or derived indexes.
+/data/
+/RAW/
+/INDEX/
+/DERIVED/
+/backups/
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.log
+.env
+.env.*
+!.env.example
+
+# Local PDF rendering and build intermediates.
+/tmp/
