@@ -1,13 +1,15 @@
 # Sistem personal de memorie — design
 
-**Stare:** propunere pentru revizuire  
+**Stare:** direcția confirmată de utilizator la 2026-10-01
 **Data:** 2026-10-01
 
 ## Scop
 
 Construim incremental un sistem personal de memorie accesibil de pe Windows și Android. PC-ul găzduiește serviciile și copia principală; telefonul păstrează o copie locală, cautabilă offline, pe care o sincronizează cu PC-ul când ambele sunt conectate la aceeași rețea Wi-Fi. Accesul din afara casei poate fi adăugat ulterior printr-o rețea privată precum Tailscale.
 
-Sistemul trebuie să păstreze sursele intacte, să arate proveniența fiecărei informații și să poată alimenta ulterior Qwen local, OpenCode și Hermes. Integrarea ChatGPT este o țintă separată: aplicațiile MCP personalizate sunt disponibile momentan în ChatGPT web, nu în aplicația mobilă; un serviciu MCP local poate necesita un tunel securizat pentru suprafețele OpenAI compatibile.
+Sistemul trebuie să păstreze sursele intacte, să arate proveniența fiecărei informații și să poată alimenta ulterior Qwen local, OpenCode și Hermes. Integrarea ChatGPT este o țintă separată și opțională. La 2026-10-01, documentația OpenAI spune că aplicațiile MCP sunt web-only, nu mobile; ChatGPT se conectează la servere MCP remote, iar un server dintr-o rețea privată poate necesita Secure MCP Tunnel. Accesul și acțiunile disponibile depind de plan/client. Aplicația proprie Android rămâne calea mobilă directă. [Sursa OpenAI](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt).
+
+Cerințele complete, scenariile, criteriile și justificarea de portofoliu sunt în [documentul de cerințe](../../project/requirements-and-scope.md). Comparația produselor existente este în [evaluarea soluțiilor](../../research/existing-solutions-comparison.md).
 
 ## Arhitectură propusă
 
