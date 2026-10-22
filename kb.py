@@ -215,6 +215,46 @@ def cmd_rmfact(text: str) -> int:
     return 0
 
 
+def cmd_stats() -> int:
+    items = notes()
+    map_size = len(INDEX.read_text(encoding="utf-8")) if INDEX.is_file() else 0
+    total = sum(n["path"].stat().st_size for n in items)
+    print(f"notes      {len(items)}")
+    print(f"map        {map_size} / {MAX_MAP} chars")
+    print(f"knowledge  {total / 1024:.1f} KB")
+    mem = [p for p in MEM.glob("*.md") if p.is_file()]
+    print(f"memory     {len(mem)} files, {sum(p.stat().st_size for p in mem) / 1024:.1f} KB")
+    newest = max((n["updated"] for n in items if n["updated"]), default="never")
+    print(f"newest     {newest}")
+    print("")
+    for n in sorted(items, key=lambda n: -(n["path"].stat().st_size)):
+        print(f"  {n['path'].stat().st_size:>7} B  {n['lines']:>3} lines  {n['file']}")
+    return 0
+
+
+def cmd_dupes() -> int:
+    """Near-duplicate evidence lines: same text after normalisation."""
+    seen: dict[str, list[str]] = {}
+    for p, _, line in iter_text():
+        text = line.strip()
+        if not text.startswith("- ") or len(text) < 40:
+            continue
+        key = re.sub(r"^- \d{4}-\d{2}-\d{2}:\s*", "", text)
+        key = re.sub(r"\s+", " ", key.lower()).strip(" .")
+        if len(key) < 30:
+            continue
+        seen.setdefault(key, []).append(p.name)
+    groups = {k: v for k, v in seen.items() if len(v) > 1}
+    if not groups:
+        print("dupes: none")
+        return 0
+    print(f"dupes: {len(groups)} repeated line(s)")
+    for key, files in sorted(groups.items(), key=lambda kv: -len(kv[1])):
+        print(f"  x{len(files)}  {', '.join(sorted(set(files)))}")
+        print(f"        {key[:150]}")
+    return 1
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print(__doc__)
@@ -224,6 +264,10 @@ def main(argv: list[str]) -> int:
         return cmd_index()
     if cmd == "lint":
         return cmd_lint()
+    if cmd == "stats":
+        return cmd_stats()
+    if cmd == "dupes":
+        return cmd_dupes()
     if cmd == "search" and rest:
         return cmd_search(" ".join(rest))
     if cmd == "show" and rest:
