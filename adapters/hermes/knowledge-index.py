@@ -1,0 +1,66 @@
+"""Hermes pre_llm_call hook: inject the knowledge map and the memory files.
+
+Hermes pipes a JSON payload on stdin and reads JSON on stdout; returning
+{"context": "..."} appends that text to the current turn's user message.
+
+The content lives in MEMORY_HOME (default E:\\AI\\memory\\PersonalMemory), not in Hermes, so
+switching harnesses means copying this file, not the data.
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+
+HOME = Path(os.environ.get("MEMORY_HOME", r"E:\AI\memory\PersonalMemory"))
+MEMORY = HOME / "memory"
+INDEX = HOME / "knowledge" / "INDEX.md"
+
+MAX_MEMORY = 1800     # chars of always-on memory
+MAX_MAP = 3000        # chars of knowledge map
+
+HEADER = (
+    "[memory] Always-on memory from the knowledge layer. The map below survived "
+    "compaction; the conversation did not. If the task touches a topic, read that "
+    "file before answering, and append durable findings with `kb.py append` in the "
+    "same turn.\n\n"
+)
+
+
+def read_capped(path: Path, limit: int) -> str:
+    try:
+        text = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+    if not text:
+        return ""
+    if len(text) > limit:
+        text = text[:limit].rsplit("\n", 1)[0] + "\n[truncated]"
+    return text
+
+
+def main() -> None:
+    try:
+        payload = json.load(sys.stdin)
+    except Exception:
+        payload = {}
+
+    if payload.get("hook_event_name") not in (None, "pre_llm_call"):
+        return
+
+    parts = []
+    for name in ("persona.md", "profile.md", "projects.md"):
+        text = read_capped(MEMORY / name, MAX_MEMORY // 3)
+        if text:
+            parts.append(text)
+    map_text = read_capped(INDEX, MAX_MAP)
+    if map_text:
+        parts.append(map_text)
+
+    if not parts:
+        return
+    print(json.dumps({"context": HEADER + "\n\n---\n\n".join(parts)}))
+
+
+if __name__ == "__main__":
+    main()
