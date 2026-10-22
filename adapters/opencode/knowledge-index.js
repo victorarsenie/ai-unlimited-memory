@@ -5,8 +5,8 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-const HOME = process.env.MEMORY_HOME || "E:\\AI\\memory\\PersonalMemory";
-const LIMITS = { persona: 900, profile: 900, projects: 900, map: 3000 };
+const HOME = process.env.MEMORY_HOME || "E:\\AI\\memory\\ai-unlimited-memory";
+const LIMITS = { profile: 900, projects: 900, map: 3000 };
 
 function readCapped(path, limit) {
   try {
@@ -22,7 +22,6 @@ function readCapped(path, limit) {
 function context() {
   const parts = [];
   for (const [name, limit] of [
-    ["persona.md", LIMITS.persona],
     ["profile.md", LIMITS.profile],
     ["projects.md", LIMITS.projects],
   ]) {

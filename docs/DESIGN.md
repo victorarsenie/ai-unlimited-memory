@@ -11,7 +11,7 @@ problem:
 - **Hermes** has capped notes plus a `pre_llm_call` hook that injects a markdown
   index: cheap and transparent, but the corpus lives inside `D:\Hermes` and dies
   with that harness.
-- **The PersonalMemory archive** (`E:\AI\memory\PersonalMemory`) is a SQLite
+- **The conversation archive** (`src/personal_memory/`, same repository) is a SQLite
   conversation store with provenance: the right place for *what was said*, a poor
   place to hand an agent every turn.
 
@@ -25,12 +25,14 @@ corpus plus a map cheap enough to inject every turn**, with adapters that read i
 
 | layer | what it holds | lifetime | owner |
 |---|---|---|---|
-| transcript | everything ever said, verbatim | forever | PersonalMemory (SQLite) |
+| transcript | everything ever said, verbatim | forever | this repo, `src/` (SQLite) |
 | knowledge | one note per topic, an answer at the top | appended, dated | this repo, `knowledge/` |
-| memory | persona, profile, active projects | rewritten | this repo, `memory/` |
+| memory | profile, active projects | rewritten | this repo, `memory/` |
 
 Only the last two are injected. The transcript is searched when a note points at
-it, never injected wholesale.
+it, never injected wholesale. The persona — character, tone, initiative — is not
+memory: it lives in the assistant repository (`jarvis`), because it must not change
+when facts do.
 
 Rule: **files are canonical; every index is derived and rebuildable.** Delete
 `INDEX.md` and `kb.py index` reconstructs it from the notes' front matter. A
@@ -63,7 +65,7 @@ agent needs "is there a decision about X, and what was it?". A map row with an
 `answers` line answers that in one line of prompt budget. Embeddings also hide
 provenance and make deletion approximate; `kb.py rmfact` deletes exact lines.
 
-Semantic recall stays available where it belongs: PersonalMemory's index over
+Semantic recall stays available where it belongs: the archive's index over
 transcripts.
 
 ## Retrieval protocol
@@ -93,13 +95,13 @@ Both adapters do the same thing with different transport:
 The Hermes installation is a three-line shim that `runpy`s the adapter inside this
 repo, so there is exactly one implementation and `git pull` updates Hermes.
 
-`MEMORY_HOME` (default `E:\AI\memory\PersonalMemory`) means the corpus can move without touching
+`MEMORY_HOME` (default `E:\AI\memory\ai-unlimited-memory`) means the corpus can move without touching
 code. Porting to a third harness is one file that reads `INDEX.md`.
 
 ## Privacy boundary
 
 Personal notes and memory are **gitignored**; the repository holds code, schema
-and synthetic examples. This mirrors the rule already used by PersonalMemory:
+and synthetic examples. This mirrors the rule already used by the archive project:
 public repositories and portfolio material use synthetic data only.
 
 ## Deliberate omissions
@@ -107,6 +109,6 @@ public repositories and portfolio material use synthetic data only.
 - No vector store, no server, no daemon. `kb.py` is stdlib-only and runs in
   milliseconds.
 - No write path from the model into the transcript. Conversation archiving belongs
-  to PersonalMemory's importer, not to a hook that could silently rewrite history.
+  to the archive's importer, not to a hook that could silently rewrite history.
 - No automatic summarisation of notes. Consolidation is a human decision because
   the failure mode being avoided is exactly un-reviewed machine summarising.

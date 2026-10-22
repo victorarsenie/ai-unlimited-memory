@@ -7,14 +7,16 @@ This repository holds two things that belong together:
 2. **The knowledge layer** — `knowledge/`, `memory/`, `kb.py` and `adapters/`,
    added 2026-10-22. It is what an agent actually reads every turn.
 
-The assistant (voice, persona, harness orchestration) lives in a separate
-repository: `victorarsenie/jarvis`. It consumes this layer; it does not own it.
+The assistant (character, voice, initiative) lives in a separate repository:
+`victorarsenie/jarvis`. It consumes this layer; it does not own it. The persona is
+not stored here: `memory/` holds facts about the user, not the assistant's
+character.
 
 ## Why two layers
 
 | layer | size | injected | lifetime |
 |---|---|---|---|
-| `memory/` | kilobytes | every turn | rewritten |
+| `memory/` | kilobytes | every turn | rewritten (profile, projects) |
 | `knowledge/` | unbounded | map every turn, note on demand | appended, dated |
 | archive (SQLite) | gigabytes | never wholesale | forever |
 
@@ -57,7 +59,7 @@ Without `answers:` a note is not on the map and `kb.py lint` fails.
 ## Harnesses
 
 - **Hermes**: `adapters/hermes/knowledge-index.py` is a `pre_llm_call` hook. It
-  reads `MEMORY_HOME` (default `E:\AI\memory\PersonalMemory`), injects
+  reads `MEMORY_HOME` (default `E:\AI\memory\ai-unlimited-memory`), injects
   `memory/*.md` and `knowledge/INDEX.md`. Install with
   `adapters/hermes/install.ps1`; it backs up the previous hook and writes a shim.
 - **OpenCode**: `adapters/opencode/knowledge-index.js` pushes a synthetic text

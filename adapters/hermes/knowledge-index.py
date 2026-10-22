@@ -3,7 +3,7 @@
 Hermes pipes a JSON payload on stdin and reads JSON on stdout; returning
 {"context": "..."} appends that text to the current turn's user message.
 
-The content lives in MEMORY_HOME (default E:\\AI\\memory\\PersonalMemory), not in Hermes, so
+The content lives in MEMORY_HOME (default E:\\AI\\memory\\ai-unlimited-memory), not in Hermes, so
 switching harnesses means copying this file, not the data.
 """
 
@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-HOME = Path(os.environ.get("MEMORY_HOME", r"E:\AI\memory\PersonalMemory"))
+HOME = Path(os.environ.get("MEMORY_HOME", r"E:\AI\memory\ai-unlimited-memory"))
 MEMORY = HOME / "memory"
 INDEX = HOME / "knowledge" / "INDEX.md"
 
@@ -49,7 +49,7 @@ def main() -> None:
         return
 
     parts = []
-    for name in ("persona.md", "profile.md", "projects.md"):
+    for name in ("profile.md", "projects.md"):
         text = read_capped(MEMORY / name, MAX_MEMORY // 3)
         if text:
             parts.append(text)
