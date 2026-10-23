@@ -137,6 +137,9 @@ Re-injecting 3.6 KB on every model request invalidates the provider prompt cache
 3. Consolidation — keeps the corpus honest as it grows.
 4. Search tool, then optional answers-only embeddings.
 5. Project overlays, provenance, staleness.
+   Overlays: **done 2026-10-23** — `knowledge/projects/<slug>/` with
+   `project.md` front matter (`paths`, `remotes`), per-project generated
+   `INDEX.md` (1,200 char cap), injected only when the turn's cwd matches.
 6. Cache-aware injection once the corpus is stable enough to hash.
 
 ## Status 2026-10-22
@@ -158,6 +161,11 @@ Done:
   Deliberately *not* skipping injection when the map is unchanged: the hook builds
   a fresh `system` array per request, so skipping risks losing memory entirely.
   The hint gets the cost benefit without that risk.
+- **Project overlays** (2026-10-23): `knowledge/projects/<slug>/`, matched by
+  absolute path first and git origin second; the overlay map is generated per
+  project and injected only in that directory (1,200 char cap). `kb.py project`
+  answers "which overlay applies here". First overlay: `ai-bench`.
 
-Still open: answer-only embeddings (secondary recall), project overlays,
-`append --source`, staleness review.
+Still open: answer-only embeddings (secondary recall), `append --source`,
+staleness review, project scoping for the *transcript* layer (the archive is
+still global).

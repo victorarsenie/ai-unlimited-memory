@@ -18,6 +18,7 @@ INDEX = HOME / "knowledge" / "INDEX.md"
 
 MAX_MEMORY = 1800     # chars of always-on memory
 MAX_MAP = 3000        # chars of knowledge map
+MAX_OVERLAY = 1200    # chars of the project overlay for the current cwd
 
 HEADER = (
     "[memory] Always-on memory from the knowledge layer. The map below survived "
@@ -56,6 +57,20 @@ def main() -> None:
     map_text = read_capped(INDEX, MAX_MAP)
     if map_text:
         parts.append(map_text)
+
+    # The project overlay is scoped: it is only injected when the turn's cwd is
+    # inside a registered project. kb.py owns the matching rules.
+    slug = ""
+    try:
+        sys.path.insert(0, str(HOME))
+        import kb  # noqa: E402  (same repo, imported for detect_project only)
+        slug = kb.detect_project(payload.get("cwd") or os.getcwd())
+    except Exception:
+        slug = ""
+    if slug:
+        overlay = read_capped(HOME / "knowledge" / "projects" / slug / "INDEX.md", MAX_OVERLAY)
+        if overlay:
+            parts.append(overlay)
 
     if not parts:
         return

@@ -8,13 +8,15 @@
 // buildContext() and pushes it into the model request's system parts.
 //
 // Reads MEMORY_HOME (default E:\AI\memory\ai-unlimited-memory).
-import { appendFileSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const HOME = process.env.MEMORY_HOME || "E:\\AI\\memory\\ai-unlimited-memory";
-const LIMITS = { profile: 900, projects: 900, map: 3000 };
+const PROJECTS = join(HOME, "knowledge", "projects");
+const LIMITS = { profile: 900, projects: 900, map: 3000, overlay: 1200 };
 
 const HEADER =
   "[memory] Always-on memory from the knowledge layer. The map survived " +
@@ -116,7 +118,98 @@ function readCapped(path, limit) {
   }
 }
 
-export function buildContext() {
+function normPath(value) {
+  return String(value).replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+}
+
+function parseList(raw) {
+  const value = String(raw || "").trim();
+  if (value.startsWith("[") && value.endsWith("]")) {
+    return value
+      .slice(1, -1)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return value ? [value] : [];
+}
+
+// knowledge/projects/<slug>/project.md; front matter only, no YAML dependency.
+export function projectMetas() {
+  let dirs = [];
+  try {
+    dirs = readdirSync(PROJECTS, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort();
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const slug of dirs) {
+    let raw = "";
+    try {
+      raw = readFileSync(join(PROJECTS, slug, "project.md"), "utf8");
+    } catch {
+      continue;
+    }
+    const fm = /^---\s*\n([\s\S]*?)\n---/.exec(raw);
+    if (!fm) continue;
+    const fields = {};
+    for (const line of fm[1].split(/\r?\n/)) {
+      const at = line.indexOf(":");
+      if (at <= 0) continue;
+      fields[line.slice(0, at).trim()] = line.slice(at + 1).trim();
+    }
+    out.push({
+      slug,
+      title: fields.title || slug,
+      paths: parseList(fields.paths),
+      remotes: parseList(fields.remotes),
+    });
+  }
+  return out;
+}
+
+function gitRemote(cwd) {
+  try {
+    return execFileSync("git", ["-C", cwd, "remote", "get-url", "origin"], {
+      encoding: "utf8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+// Longest matching `paths:` entry wins; otherwise compare the git origin URL.
+export function detectProject(cwd = process.cwd()) {
+  const here = normPath(cwd);
+  const metas = projectMetas();
+  let best = null;
+  for (const meta of metas) {
+    for (const path of meta.paths) {
+      const np = normPath(path);
+      if (np && (here === np || here.startsWith(np + "/"))) {
+        if (!best || np.length > best.size) best = { slug: meta.slug, size: np.length };
+      }
+    }
+  }
+  if (best) return best.slug;
+  const url = normPath(gitRemote(cwd)).replace(/\.git$/, "");
+  if (url) {
+    for (const meta of metas) {
+      for (const remote of meta.remotes) {
+        const nr = normPath(remote).replace(/\.git$/, "");
+        if (nr && (url.includes(nr) || nr.includes(url))) return meta.slug;
+      }
+    }
+  }
+  return "";
+}
+
+export function buildContext(cwd) {
   const parts = [];
   for (const [name, limit] of [
     ["profile.md", LIMITS.profile],
@@ -127,6 +220,13 @@ export function buildContext() {
   }
   const map = readCapped(join(HOME, "knowledge", "INDEX.md"), LIMITS.map);
   if (map) parts.push(map);
+  // The server runs as a service, so its own cwd is not the workspace; the
+  // caller passes the session directory and this falls back to cwd for tests.
+  const slug = detectProject(cwd || process.cwd());
+  if (slug) {
+    const overlay = readCapped(join(PROJECTS, slug, "INDEX.md"), LIMITS.overlay);
+    if (overlay) parts.push(overlay);
+  }
   if (!parts.length) return "";
   return HEADER + parts.join("\n\n---\n\n");
 }

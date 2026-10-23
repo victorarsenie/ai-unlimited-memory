@@ -27,18 +27,33 @@ $shim = @"
 import { Plugin } from "@opencode/plugin"
 import { buildContext, captureCandidate, log } from "$uri"
 
+// Session -> workspace directory. The server process runs as a service, so
+// process.cwd() is not the workspace; the session record is the only reliable
+// source. Cached because it does not change for the life of a session.
+const dirs = new Map<string, string>()
+
 export default Plugin.define({
   id: "local.knowledge-index",
   async setup(ctx) {
     await ctx.session.hook("context", async (event) => {
       try {
         captureCandidate(event.messages, event.sessionID)
-        const text = buildContext()
+        let directory = dirs.get(event.sessionID) ?? ""
+        if (!directory) {
+          try {
+            const session: any = await ctx.session.get({ sessionID: event.sessionID })
+            directory = String(session?.location?.directory ?? "")
+            if (directory) dirs.set(event.sessionID, directory)
+          } catch {
+            /* keep the cwd fallback */
+          }
+        }
+        const text = buildContext(directory || undefined)
         if (!text) return
         // Ephemeral cache hint: the block is identical between turns and after
         // compaction, so the provider can reuse it instead of re-billing it.
         event.system.push({ type: "text", text, cache: { type: "ephemeral" } })
-        log(``v2 injected session=`` + event.sessionID + `` chars=`` + text.length)
+        log(``v2 injected session=`` + event.sessionID + `` dir=`` + directory + `` chars=`` + text.length)
       } catch (error) {
         log(``v2 error session=`` + event.sessionID + ``: `` + String(error))
       }

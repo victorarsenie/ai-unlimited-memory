@@ -39,6 +39,12 @@ compaction. Treat the injected copy as a table of contents, never as the answer.
 4. **Delete wrong facts explicitly**: `kb_rmfact` (tool) or
    `kb.py rmfact "<text>"`. Never leave a stale line hoping a later note overrides
    it.
+5. **Repo-scoped facts go to the project overlay.** When the injected context shows
+   a `# Project overlay:` map, the facts that are only true in this repository
+   (paths, local commands, current state) belong in
+   `knowledge/projects/<slug>/`, not in the global notes. Create
+   `project.md` there with `paths:` (absolute) or `remotes:` (git origin) so the
+   overlay is detected; `kb.py project` prints the slug for a directory.
 
 ## Note format
 
