@@ -23,7 +23,7 @@ $shim = @"
 import runpy
 runpy.run_path(r"$adapter", run_name="__main__")
 "@
-Set-Content -Path $hook -Value $shim -Encoding utf8
+[IO.File]::WriteAllText($hook, $shim, (New-Object System.Text.UTF8Encoding($false)))
 Write-Host "installed shim: $hook"
 
 # Register the hook in config.yaml. Appending a second `hooks:` key would be
@@ -51,7 +51,7 @@ hooks:
 
 hooks_auto_accept: true
 "@
-    Add-Content -Path $config -Value $block -Encoding utf8
+    [IO.File]::AppendAllText($config, $block, (New-Object System.Text.UTF8Encoding($false)))
     Write-Host "appended hook registration to $config"
   }
   if ($text -notmatch '(?m)^hooks_auto_accept:\s*true') {

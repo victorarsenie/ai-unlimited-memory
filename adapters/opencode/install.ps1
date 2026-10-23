@@ -61,7 +61,7 @@ export default Plugin.define({
   },
 })
 "@
-Set-Content -Path $target -Value $shim -Encoding utf8
+[IO.File]::WriteAllText($target, $shim, (New-Object System.Text.UTF8Encoding($false)))
 Write-Host "installed: $target"
 
 # AGENTS.md is generated from this repository too, so a wiped config comes back

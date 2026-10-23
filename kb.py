@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """kb - the knowledge layer for the personal memory system.
 
 Files are canonical. The map (knowledge/INDEX.md) is generated from the notes'
@@ -340,7 +340,7 @@ def cmd_index() -> int:
 
 def cmd_lint() -> int:
     problems = []
-    map_text = INDEX.read_text(encoding="utf-8") if INDEX.is_file() else ""
+    map_text = INDEX.read_text(encoding="utf-8-sig") if INDEX.is_file() else ""
 
     # Root notes (user rules) must be structured; they are listed under "At the root".
     for n in notes():
@@ -360,7 +360,7 @@ def cmd_lint() -> int:
         if not dmap_path.is_file():
             problems.append(f"{meta['name']}/INDEX.md: missing - run index")
             continue
-        dmap = dmap_path.read_text(encoding="utf-8")
+        dmap = dmap_path.read_text(encoding="utf-8-sig")
         if len(dmap) > MAX_DOMAIN_MAP:
             problems.append(f"{meta['name']}/INDEX.md: {len(dmap)} chars (> {MAX_DOMAIN_MAP})")
         listed = set(re.findall(r"\| ([^|]+\.md) \|", dmap))
@@ -401,7 +401,7 @@ def cmd_lint() -> int:
         pmap = folder / "INDEX.md"
         if not pmap.is_file():
             problems.append(f"projects/{meta['slug']}/INDEX.md: missing - run index")
-        elif len(pmap.read_text(encoding="utf-8")) > MAX_PROJECT_MAP:
+        elif len(pmap.read_text(encoding="utf-8-sig")) > MAX_PROJECT_MAP:
             problems.append(f"projects/{meta['slug']}/INDEX.md: over {MAX_PROJECT_MAP} chars")
 
     if not problems:
@@ -507,7 +507,7 @@ def cmd_owner(topic: str, value: str) -> int:
 
 
 def cmd_show(topic: str) -> int:
-    print(note_path(topic).read_text(encoding="utf-8"))
+    print(note_path(topic).read_text(encoding="utf-8-sig"))
     return 0
 
 
@@ -551,7 +551,7 @@ def cmd_rmfact(text: str, force: bool = False) -> int:
         if not force and note_owner(p) == "human":
             skipped += 1
             continue
-        lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+        lines = p.read_text(encoding="utf-8-sig").splitlines(keepends=True)
         keep = [ln for ln in lines if needle not in ln.lower()]
         if len(keep) != len(lines):
             removed += len(lines) - len(keep)
@@ -572,7 +572,7 @@ def cmd_pending(text: str, session: str = "") -> int:
         text = text[:MAX_PENDING_CHARS].rsplit(" ", 1)[0] + " ..."
     p = pending_file()
     digest = hashlib.sha1(text.lower().encode("utf-8")).hexdigest()[:12]
-    existing = p.read_text(encoding="utf-8") if p.is_file() else ""
+    existing = p.read_text(encoding="utf-8-sig") if p.is_file() else ""
     if digest in existing:
         print("pending: duplicate, ignored")
         return 0
@@ -590,7 +590,7 @@ def _pending_entries() -> list[dict]:
     if not PENDING.is_dir():
         return out
     for p in sorted(PENDING.glob("*.md")):
-        for raw in p.read_text(encoding="utf-8").splitlines():
+        for raw in p.read_text(encoding="utf-8-sig").splitlines():
             if not raw.strip().startswith("- "):
                 continue
             body = re.sub(r"^- \d{2}:\d{2}:\d{2}\s+", "", raw.strip())
@@ -628,7 +628,7 @@ def cmd_review(promote: str | None = None, topic: str | None = None, clear: bool
         names = {e["file"] for e in chosen}
         for p in names:
             drop = [e["raw"] for e in chosen if e["file"] == p]
-            lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+            lines = p.read_text(encoding="utf-8-sig").splitlines(keepends=True)
             kept = [ln for ln in lines if ln.rstrip("\n") not in drop]
             if kept:
                 p.write_text("".join(kept), encoding="utf-8", newline="\n")
@@ -666,7 +666,7 @@ def cmd_consolidate(apply: bool = False) -> int:
         if note_owner(p) == "human":
             skipped += 1
             continue
-        for raw in p.read_text(encoding="utf-8").splitlines():
+        for raw in p.read_text(encoding="utf-8-sig").splitlines():
             if not raw.strip().startswith("- "):
                 continue
             body = re.sub(r"^- \d{4}-\d{2}-\d{2}:\s*", "", raw.strip())
@@ -706,7 +706,7 @@ def cmd_consolidate(apply: bool = False) -> int:
         return 0
 
     for p, raws in remove.items():
-        lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+        lines = p.read_text(encoding="utf-8-sig").splitlines(keepends=True)
         pending = list(raws)
         kept = []
         for ln in lines:
@@ -868,7 +868,7 @@ def _embed_stop() -> bool:
     if not EMBED_PID.is_file():
         return False
     try:
-        pid = int(EMBED_PID.read_text(encoding="utf-8").strip())
+        pid = int(EMBED_PID.read_text(encoding="utf-8-sig").strip())
     except ValueError:
         EMBED_PID.unlink(missing_ok=True)
         return False
@@ -898,7 +898,7 @@ def _doc_text(n: dict) -> str:
 
 def _load_cache() -> dict:
     try:
-        data = json.loads(EMBED_CACHE.read_text(encoding="utf-8"))
+        data = json.loads(EMBED_CACHE.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):
         return {"model": EMBED_MODEL.name, "dim": EMBED_DIM, "docs": {}}
     if data.get("model") != EMBED_MODEL.name or data.get("dim") != EMBED_DIM:
@@ -1131,7 +1131,7 @@ def cmd_stale(days: int = 30) -> int:
 
 def cmd_stats() -> int:
     items = _all_notes()
-    map_size = len(INDEX.read_text(encoding="utf-8")) if INDEX.is_file() else 0
+    map_size = len(INDEX.read_text(encoding="utf-8-sig")) if INDEX.is_file() else 0
     total = sum(n["path"].stat().st_size for n in items)
     print(f"notes      {len(items)} in {len(domain_dirs())} domain(s)")
     print(f"map        {map_size} / {MAX_MAP} chars")
