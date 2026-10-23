@@ -197,6 +197,11 @@ Done:
 - **Findings files** (2026-10-23): `knowledge/projects/<slug>/findings.md` holds
   the lessons from recurring work, read before the next run. First one:
   `ai-bench/findings.md` (probe clobbering, control-arm rule, port 8080).
+- **Rules moved out of the harness config** (2026-10-23): `memory/rules.md` is now
+  the single behaviour contract, injected first by both adapters;
+  `~/.config/opencode/AGENTS.md` shrank to a pointer plus a fallback instruction.
+  The same commit fixed two silent truncations: `profile.md` (1,005 chars) and
+  `projects.md` (1,698) were being cut by 900-char caps.
 
 Done: **project overlays** (item 5), **provenance and staleness** (item 6),
 **lexical recall** (item 4, dependency-free half).

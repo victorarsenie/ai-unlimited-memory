@@ -67,6 +67,11 @@ compaction. Treat the injected copy as a table of contents, never as the answer.
    in that project's overlay (`knowledge/projects/<slug>/findings.md`), and append
    the new lesson to it the same turn it is learned. One line, with the rule that
    would have prevented the failure.
+8. **Behaviour rules belong to the memory layer, not to a harness.** When the user
+   asks for a working rule ("always do X", "stop doing Y"), write it into
+   `memory/rules.md` — both adapters inject that file every turn — never into
+   `AGENTS.md`, `SOUL.md` or another harness config, or the other harness will not
+   see it.
 
 ## Note format
 

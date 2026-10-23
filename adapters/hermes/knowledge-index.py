@@ -16,7 +16,8 @@ HOME = Path(os.environ.get("MEMORY_HOME", r"E:\AI\memory\ai-unlimited-memory"))
 MEMORY = HOME / "memory"
 INDEX = HOME / "knowledge" / "INDEX.md"
 
-MAX_MEMORY = 1800     # chars of always-on memory
+MAX_MEMORY = 3200     # chars of always-on memory (profile + projects, split below)
+MAX_RULES = 3200      # chars of harness-agnostic operating rules
 MAX_MAP = 3000        # chars of knowledge map
 MAX_OVERLAY = 1200    # chars of the project overlay for the current cwd
 
@@ -50,8 +51,12 @@ def main() -> None:
         return
 
     parts = []
-    for name in ("profile.md", "projects.md"):
-        text = read_capped(MEMORY / name, MAX_MEMORY // 3)
+    # Rules first: the same harness-agnostic file the OpenCode plugin injects.
+    rules = read_capped(MEMORY / "rules.md", MAX_RULES)
+    if rules:
+        parts.append(rules)
+    for name, limit in (("profile.md", 1400), ("projects.md", 1800)):
+        text = read_capped(MEMORY / name, limit)
         if text:
             parts.append(text)
     map_text = read_capped(INDEX, MAX_MAP)

@@ -16,7 +16,7 @@ import { join } from "node:path";
 
 const HOME = process.env.MEMORY_HOME || "E:\\AI\\memory\\ai-unlimited-memory";
 const PROJECTS = join(HOME, "knowledge", "projects");
-const LIMITS = { profile: 900, projects: 900, map: 3000, overlay: 1200 };
+const LIMITS = { rules: 3200, profile: 1400, projects: 1800, map: 3000, overlay: 1200 };
 
 const HEADER =
   "[memory] Always-on memory from the knowledge layer. The map survived " +
@@ -211,6 +211,9 @@ export function detectProject(cwd = process.cwd()) {
 
 export function buildContext(cwd) {
   const parts = [];
+  // Rules first: harness-agnostic behaviour, the same file Hermes injects.
+  const rules = readCapped(join(HOME, "memory", "rules.md"), LIMITS.rules);
+  if (rules) parts.push(rules);
   for (const [name, limit] of [
     ["profile.md", LIMITS.profile],
     ["projects.md", LIMITS.projects],

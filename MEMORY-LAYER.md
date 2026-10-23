@@ -16,7 +16,7 @@ character.
 
 | layer | size | injected | lifetime |
 |---|---|---|---|
-| `memory/` | kilobytes | every turn | rewritten (profile, projects) |
+| `memory/` | kilobytes | every turn | rewritten (rules, profile, projects) |
 | `knowledge/` | unbounded | map every turn, note on demand | appended, dated |
 | archive (SQLite) | gigabytes | never wholesale | forever |
 
@@ -161,14 +161,29 @@ user overrides it — that ask is the permission. The write then carries
 approved the edit, and a long note should have its proposed line shown before the
 write, not after. `kb.py owner <topic> human|agent` flips the flag.
 
+## Operating rules live here, not in a harness config
+
+`memory/rules.md` is the behaviour contract: working style, edit discipline,
+reporting, boundaries, memory rules. Both adapters inject it first in every request,
+so OpenCode and Hermes cannot drift apart, and a third harness only has to inject
+the same file. Harness configs (`~/.config/opencode/AGENTS.md`, Hermes `SOUL.md`)
+keep only what is genuinely harness-specific and point here; the OpenCode one also
+tells the model to read this file directly if the injection is ever missing.
+
+Sizes are capped per file (`rules` 3,200, `profile` 1,400, `projects` 1,800, map
+3,000, overlay 1,200 chars) and the caps are deliberately above the current sizes:
+a cap below the file silently truncates it, which is worse than a slightly larger
+prompt.
+
 ## Harnesses
 
 - **Hermes**: `adapters/hermes/knowledge-index.py` is a `pre_llm_call` hook. It
   reads `MEMORY_HOME` (default `E:\AI\memory\ai-unlimited-memory`), injects
-  `memory/*.md` and `knowledge/INDEX.md`. Install with
+  `memory/rules.md`, `memory/profile.md`, `memory/projects.md` and
+  `knowledge/INDEX.md`, plus the project overlay when the cwd matches. Install with
   `adapters/hermes/install.ps1`; it backs up the previous hook and writes a shim.
 - **OpenCode**: `adapters/opencode/knowledge-index.js` exports `buildContext()`
-  (memory + map) and `captureCandidate()`; the installed v2 shim
+  (rules + memory + map + overlay) and `captureCandidate()`; the installed v2 shim
   (`~/.config/opencode/plugins/knowledge-index.ts`) pushes the context into
   `event.system` with an ephemeral cache hint and calls the capture on each
   request. Install with `adapters/opencode/install.ps1`.
