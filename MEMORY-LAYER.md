@@ -175,6 +175,26 @@ Sizes are capped per file (`rules` 3,200, `profile` 1,400, `projects` 1,800, map
 a cap below the file silently truncates it, which is worse than a slightly larger
 prompt.
 
+## What lives where
+
+Every artefact a harness needs has a canonical copy in this repository, so a wiped
+config is rebuilt from here rather than reconstructed from memory. `recover.ps1`
+checks and reinstalls all of it.
+
+| installed path | canonical source here | installed by |
+|---|---|---|
+| `~/.config/opencode/plugins/knowledge-index.ts` | shim generated from `adapters/opencode/knowledge-index.js` | `adapters/opencode/install.ps1` |
+| `~/.config/opencode/AGENTS.md` | `adapters/opencode/AGENTS.md` | `adapters/opencode/install.ps1` |
+| `opencode.jsonc` → `mcp.servers.ai-memory` | `adapters/opencode/mcp.ai-memory.jsonc` | printed by `install.ps1` (that file is not ours to rewrite) |
+| `~/.config/opencode/skills/knowledge-base/SKILL.md` | `skills/knowledge-base/SKILL.md` | `skills/install.ps1` |
+| `D:\Hermes\agent-hooks\knowledge-index.py` | shim generated from `adapters/hermes/knowledge-index.py` | `adapters/hermes/install.ps1` |
+| `D:\Hermes\config.yaml` → `hooks.pre_llm_call` | `adapters/hermes/hooks.snippet.yaml` | `adapters/hermes/install.ps1` (appends when `hooks:` is absent, otherwise prints) |
+| `D:\Hermes\skills\memory\knowledge-base\SKILL.md` | `skills/knowledge-base/SKILL.md` | `skills/install.ps1` |
+| injected context in every harness | `memory/rules.md` + `memory/profile.md` + `memory/projects.md` + `knowledge/INDEX.md` + project overlay | the adapters |
+
+The data itself — `knowledge/`, `memory/`, the SQLite archive — never lives in a
+harness config, so losing a config loses wiring, not memory.
+
 ## Harnesses
 
 - **Hermes**: `adapters/hermes/knowledge-index.py` is a `pre_llm_call` hook. It

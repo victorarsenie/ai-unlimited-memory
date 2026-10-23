@@ -26,6 +26,39 @@ runpy.run_path(r"$adapter", run_name="__main__")
 Set-Content -Path $hook -Value $shim -Encoding utf8
 Write-Host "installed shim: $hook"
 
+# Register the hook in config.yaml. Appending a second `hooks:` key would be
+# invalid YAML, so an existing block is reported instead of guessed at.
+$config = Join-Path $HermesHome 'config.yaml'
+$snippet = Join-Path $repo 'adapters\hermes\hooks.snippet.yaml'
+if (Test-Path $config) {
+  $text = Get-Content $config -Raw
+  $hookPath = $hook -replace '\\', '/'
+  if ($text -match [regex]::Escape($hookPath)) {
+    Write-Host "ok: hook registered in $config"
+  } elseif ($text -match '(?m)^hooks:') {
+    Write-Host "MISSING: add this under hooks.pre_llm_call in $config" -ForegroundColor Yellow
+    if (Test-Path $snippet) { Write-Host (Get-Content $snippet -Raw) }
+  } else {
+    $bak = "$config.bak-" + (Get-Date -Format 'yyyyMMdd-HHmmss')
+    Copy-Item $config $bak -Force
+    Write-Host "backed up: $bak"
+    $block = @"
+
+hooks:
+  pre_llm_call:
+    - command: "$hookPath"
+      timeout: 5
+
+hooks_auto_accept: true
+"@
+    Add-Content -Path $config -Value $block -Encoding utf8
+    Write-Host "appended hook registration to $config"
+  }
+  if ($text -notmatch '(?m)^hooks_auto_accept:\s*true') {
+    Write-Host "WARNING: hooks_auto_accept is not true; non-interactive runs will skip the hook" -ForegroundColor Yellow
+  }
+}
+
 # Verify it answers with JSON.
 $payload = '{"hook_event_name":"pre_llm_call"}'
 $out = $payload | & py -3 $hook 2>&1

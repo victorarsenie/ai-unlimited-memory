@@ -1,0 +1,13 @@
+# Canonical copy of the Hermes hook registration for the memory layer.
+# Installed file: D:\Hermes\config.yaml. `adapters/hermes/install.ps1` checks that
+# the entry exists and appends this block when `hooks:` is absent; when the file
+# already has a `hooks:` key it prints the entry instead of risking invalid YAML.
+#
+# hooks_auto_accept must be true, or non-interactive runs (gateway, cron) refuse to
+# load the hook.
+hooks:
+  pre_llm_call:
+    - command: "D:/Hermes/agent-hooks/knowledge-index.py"
+      timeout: 5
+
+hooks_auto_accept: true

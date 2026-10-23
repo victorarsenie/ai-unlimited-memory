@@ -63,4 +63,32 @@ export default Plugin.define({
 "@
 Set-Content -Path $target -Value $shim -Encoding utf8
 Write-Host "installed: $target"
+
+# AGENTS.md is generated from this repository too, so a wiped config comes back
+# from here rather than from memory.
+$configDir = Split-Path $PluginsDir -Parent
+$agentsSource = Join-Path $repo 'adapters\opencode\AGENTS.md'
+$agentsTarget = Join-Path $configDir 'AGENTS.md'
+if (Test-Path $agentsSource) {
+  if (Test-Path $agentsTarget) {
+    $bak = "$agentsTarget.bak-" + (Get-Date -Format 'yyyyMMdd-HHmmss')
+    Copy-Item $agentsTarget $bak -Force
+    Write-Host "backed up: $bak"
+  }
+  Copy-Item $agentsSource $agentsTarget -Force
+  Write-Host "installed: $agentsTarget"
+}
+
+# MCP tools live in opencode.jsonc, which this repository does not own: check the
+# entry and print the canonical block when it is missing.
+$config = Join-Path $configDir 'opencode.jsonc'
+$snippet = Join-Path $repo 'adapters\opencode\mcp.ai-memory.jsonc'
+if (Test-Path $config) {
+  if ((Get-Content $config -Raw) -match '"ai-memory"') {
+    Write-Host "ok: ai-memory MCP entry present in $config"
+  } else {
+    Write-Host "MISSING: add this block to mcp.servers in $config" -ForegroundColor Yellow
+    if (Test-Path $snippet) { Write-Host (Get-Content $snippet -Raw) }
+  }
+}
 Write-Host "verify: run a prompt, then read the injection log at `$env:TEMP\kb-inject.log"

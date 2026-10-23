@@ -1,0 +1,17 @@
+// Canonical copy of the memory-layer MCP entry for OpenCode.
+// Installed file: ~/.config/opencode/opencode.jsonc, inside the `mcp.servers` block.
+// `adapters/opencode/install.ps1` checks that this entry exists and prints this
+// block when it is missing; the rest of that file is OpenCode configuration and is
+// not owned by this repository.
+//
+// The command is an absolute path because the harness does not inherit MEMORY_HOME.
+{
+  "ai-memory": {
+    "type": "local",
+    "command": [
+      "C:/Users/victo/AppData/Local/Programs/Python/Python312/python.exe",
+      "E:/AI/memory/ai-unlimited-memory/adapters/mcp/server.py"
+    ],
+    "disabled": false
+  }
+}
