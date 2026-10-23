@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
-"""kb - the knowledge layer for the Jarvis memory system.
+﻿#!/usr/bin/env python3
+"""kb - the knowledge layer for the personal memory system.
 
 Files are canonical. The map (knowledge/INDEX.md) is generated from the notes'
 front matter, capped so it stays cheap enough to inject every turn.

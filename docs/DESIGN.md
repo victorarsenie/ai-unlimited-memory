@@ -1,4 +1,4 @@
-# Design: one memory layer, many harnesses
+﻿# Design: one memory layer, many harnesses
 
 ## Problem
 
@@ -30,8 +30,8 @@ corpus plus a map cheap enough to inject every turn**, with adapters that read i
 | memory | profile, active projects | rewritten | this repo, `memory/` |
 
 Only the last two are injected. The transcript is searched when a note points at
-it, never injected wholesale. The persona — character, tone, initiative — is not
-memory: it lives in the assistant repository (`jarvis`), because it must not change
+it, never injected wholesale. The persona â€” character, tone, initiative â€” is not
+memory: it lives in the assistant repository (`muther`), because it must not change
 when facts do.
 
 Rule: **files are canonical; every index is derived and rebuildable.** Delete
@@ -55,7 +55,7 @@ Two deliberate consequences:
    update.
 
 This is the part taken from Mark-LVI: what fits goes in the prompt, the rest is
-looked up on demand — but the lookup is a file read, not an embedding query, so it
+looked up on demand â€” but the lookup is a file read, not an embedding query, so it
 is reproducible and auditable.
 
 ## Why not embeddings (for this layer)
@@ -74,12 +74,12 @@ transcripts.
 2. If a row matches the task, read that file before answering.
 3. If the finding is durable, `kb.py append <topic> "<text>"` in the same turn,
    then `kb.py index`.
-4. If a fact is wrong, `kb.py rmfact "<text>"` — and say so.
+4. If a fact is wrong, `kb.py rmfact "<text>"` â€” and say so.
 
 Step 3 is the one agents skip. It is stated in the injected header, in the note
-template, and in `jobs/` — three places, because one is not enough.
+template, and in `jobs/` â€” three places, because one is not enough.
 
-The harness-level alternative — a skill telling the model "remember to save" —
+The harness-level alternative â€” a skill telling the model "remember to save" â€”
 was tried and fails: after compaction the instruction is gone with everything
 else. Injection is the only mechanism that survives compaction.
 

@@ -8,7 +8,7 @@ This repository holds two things that belong together:
    added 2026-10-22. It is what an agent actually reads every turn.
 
 The assistant (character, voice, initiative) lives in a separate repository:
-`victorarsenie/jarvis`. It consumes this layer; it does not own it. The persona is
+`victorarsenie/muther`. It consumes this layer; it does not own it. The persona is
 not stored here: `memory/` holds facts about the user, not the assistant's
 character.
 
