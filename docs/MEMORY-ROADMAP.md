@@ -80,14 +80,18 @@ notes the moment they are trimmed from the 3,000-character map.
 - Optional second index: embed note titles + `answers` only (not the body),
   stored locally, rebuilt by `kb.py index`; the body stays file-only. Small
   vectors, no new canonical store.
-  **Half done 2026-10-23**: `kb.py similar` ranks notes by TF-IDF cosine over the
-  Answer block, title and tags, with no model, no network and no index on disk
-  (`--full` adds the evidence tail). Measured on eight hand-written questions
-  against the 12 notes: answer-only 6/8 top-1, `--full` 7/8. Both misses are the
-  same shape - the question uses vocabulary that only appears in the evidence
-  ("expert cache spill" vs an answers line that says "engines, quants, context
-  ceilings, speeds"). That is the gap a real embedding model closes; it needs a
-  model file we do not have, so it stays open.
+  **Half done 2026-10-23**: `kb.py similar` ranks notes with BM25 over the whole
+  note, length-normalised, no model, no process, no index on disk (`--answers`
+  restricts it to the Answer block). Measured on eight English questions against
+  12 notes: 7/8 top-1 full-text, 6/8 answers-only; on two Romanian questions, 0/2,
+  because BM25 compares tokens and the corpus is English — the skill instructs the
+  model to translate keywords before searching.
+  A real embedder was built and measured too (`kb.py embed --start`,
+  multilingual-e5/EmbeddingGemma via `llama-server --embeddings`): Romanian query
+  against the matching English note 0.47 vs 0.20 unrelated, so it closes the
+  cross-language gap. It stays **off by default** because it costs ~940 MB
+  resident, which this box cannot spare next to Strata's ~20.5 GiB of pinned
+  experts. Escalation path, in order: BM25 -> `search` -> manual `embed --start`.
 - Do not embed the corpus; that reintroduces the thing we rejected.
 
 ### 5. Project scoping
@@ -189,5 +193,7 @@ Done:
 Done: **project overlays** (item 5), **provenance and staleness** (item 6),
 **lexical recall** (item 4, dependency-free half).
 
-Still open: a real embedding model for item 4 (needs a file we do not have),
-project scoping for the *transcript* layer (the archive is still global).
+Still open: a real embedding model as an *optional* second index — built and
+measured 2026-10-23, deliberately off by default because the helper costs ~940 MB
+resident next to Strata's pinned experts; project scoping for the *transcript*
+layer (the archive is still global).

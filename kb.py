@@ -15,7 +15,8 @@ front matter, capped so it stays cheap enough to inject every turn.
     python kb.py append <topic> <text>   add a dated finding under Evidence
     python kb.py append <topic> <text> --source <ref>
     python kb.py stale [--days N]        notes not touched, and expired ones
-    python kb.py similar <query>         lexical recall over the Answer blocks
+    python kb.py similar <query>         BM25 recall over the notes (no process)
+    python kb.py embed [--status|--start|--stop|--keep]   optional embedding helper
     python kb.py rmfact <text>    delete lines containing text (fact-level delete)
     python kb.py pending <text>   queue a capture candidate for review
     python kb.py review           list candidates
@@ -27,9 +28,14 @@ front matter, capped so it stays cheap enough to inject every turn.
 from __future__ import annotations
 
 import hashlib
+import json
 import math
+import os
 import re
+import subprocess
 import sys
+import time
+import urllib.request
 from datetime import date, datetime
 from pathlib import Path
 
@@ -43,6 +49,21 @@ MAX_MAP = 3000          # characters, injected every turn
 MAX_PROJECT_MAP = 1200  # characters per project overlay, injected only in that repo
 MAX_NOTE_LINES = 400    # a note bigger than this is a document, split it
 MAX_PENDING_CHARS = 800  # one candidate, not a transcript
+
+# Embeddings are optional: `kb.py similar` blends them with the lexical score
+# when the server answers, and falls back to lexical alone when it does not.
+# The model is 942 MB resident, so it is started on demand and stopped again
+# unless `--keep` was asked for (RAM here is spoken for by Strata's experts).
+EMBED_BASE = os.environ.get("KB_EMBED_BASE", "http://127.0.0.1:8090")
+EMBED_MODEL = Path(os.environ.get(
+    "KB_EMBED_MODEL", r"E:\AI\models\gguf\embeddinggemma-300M-Q8_0.gguf"))
+EMBED_SERVER = Path(os.environ.get(
+    "KB_EMBED_SERVER", r"E:\AI\engines\llama\llama-b11738-cuda13\llama-server.exe"))
+EMBED_CACHE = KB / ".index" / "embeddings.json"
+EMBED_PID = KB / ".index" / "embed.pid"
+EMBED_DIM = 768
+EMBED_BLEND = 0.75      # share of the embedding score; the rest is normalised lexical
+EMBED_MIN_FREE_MB = 4096  # never start the embedder below this much free physical RAM
 
 FM = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.S)
 
@@ -589,16 +610,174 @@ def _vector(tokens: list[str], idf: dict[str, float], default_idf: float = 1.0) 
     return {t: v / norm for t, v in vec.items()}
 
 
-def cmd_similar(query: str, top: int = 5, full: bool = False) -> int:
-    """Lexical recall over the notes: no model, no network, no index on disk.
+def _embed_port() -> str:
+    try:
+        return str(int(EMBED_BASE.rsplit(":", 1)[1].rstrip("/")))
+    except (IndexError, ValueError):
+        return "8090"
 
-    Default ranks the Answer block only (title, answers line, tags); `full` adds
-    the evidence tail, which recalls better but is dominated by long notes.
+
+def _embed_health(timeout: float = 2.0) -> bool:
+    try:
+        with urllib.request.urlopen(EMBED_BASE + "/health", timeout=timeout) as r:
+            return json.load(r).get("status") == "ok"
+    except Exception:
+        return False
+
+
+def _embed_post(texts: list[str]) -> list[list[float]]:
+    payload = json.dumps({"input": texts, "model": EMBED_MODEL.name}).encode()
+    req = urllib.request.Request(
+        EMBED_BASE + "/v1/embeddings", data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=120) as r:
+        data = json.load(r)
+    rows = sorted(data["data"], key=lambda d: d.get("index", 0))
+    return [row["embedding"] for row in rows]
+
+
+def _free_ram_mb() -> int:
+    """Physical RAM available right now, in MB (0 when it cannot be read)."""
+    if os.name != "nt":
+        return 0
+    try:
+        import ctypes
+
+        class MEMSTATUS(ctypes.Structure):
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+
+        stat = MEMSTATUS()
+        stat.dwLength = ctypes.sizeof(MEMSTATUS)
+        ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat))
+        return int(stat.ullAvailPhys / (1024 * 1024))
+    except Exception:
+        return 0
+
+
+def _embed_start(wait: float = 40.0) -> bool:
+    if _embed_health():
+        return False
+    if not EMBED_MODEL.is_file():
+        print(f"embed: model not found: {EMBED_MODEL}")
+        return False
+    if not EMBED_SERVER.is_file():
+        print(f"embed: llama-server not found: {EMBED_SERVER}")
+        return False
+    free = _free_ram_mb()
+    if free and free < EMBED_MIN_FREE_MB:
+        print(f"embed: refused, only {free} MB free RAM (needs {EMBED_MIN_FREE_MB} MB "
+              "- Strata's experts would be evicted); using lexical")
+        return False
+    flags = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
+    proc = subprocess.Popen(
+        [str(EMBED_SERVER), "-m", str(EMBED_MODEL), "--embeddings",
+         "-c", "512", "--port", _embed_port(), "--host", "127.0.0.1", "--no-webui"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        creationflags=flags,
+    )
+    EMBED_PID.parent.mkdir(parents=True, exist_ok=True)
+    EMBED_PID.write_text(str(proc.pid), encoding="utf-8")
+    deadline = time.time() + wait
+    while time.time() < deadline:
+        if _embed_health(1.0):
+            return True
+        if proc.poll() is not None:
+            break
+        time.sleep(0.5)
+    print("embed: server did not become healthy")
+    return False
+
+
+def _embed_stop() -> bool:
+    """Stop only the server this script started, never the main inference engine."""
+    if not EMBED_PID.is_file():
+        return False
+    try:
+        pid = int(EMBED_PID.read_text(encoding="utf-8").strip())
+    except ValueError:
+        EMBED_PID.unlink(missing_ok=True)
+        return False
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(pid), "/F"],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            os.kill(pid, 15)
+    except Exception:
+        pass
+    EMBED_PID.unlink(missing_ok=True)
+    return True
+
+
+def _cos(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a)) or 1.0
+    nb = math.sqrt(sum(y * y for y in b)) or 1.0
+    return dot / (na * nb)
+
+
+def _doc_text(n: dict) -> str:
+    tags = n["tags"] if isinstance(n["tags"], list) else [str(n["tags"])]
+    return f"title: {n['title']} | text: {n['answers']}. {_answer_text(n['path'])} {' '.join(tags)}"
+
+
+def _load_cache() -> dict:
+    try:
+        data = json.loads(EMBED_CACHE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"model": EMBED_MODEL.name, "dim": EMBED_DIM, "docs": {}}
+    if data.get("model") != EMBED_MODEL.name or data.get("dim") != EMBED_DIM:
+        return {"model": EMBED_MODEL.name, "dim": EMBED_DIM, "docs": {}}
+    return data
+
+
+def _save_cache(data: dict) -> None:
+    EMBED_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    EMBED_CACHE.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+
+
+def _vectors(items: list[dict]) -> dict[str, list[float]]:
+    """Embedding per note, re-embedding only the notes whose text changed."""
+    cache = _load_cache()
+    docs = cache["docs"]
+    dirty = []
+    for n in items:
+        text = _doc_text(n)
+        digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
+        row = docs.get(n["label"])
+        if not row or row.get("hash") != digest:
+            dirty.append((n, text, digest))
+    if dirty:
+        batch = 32
+        for start in range(0, len(dirty), batch):
+            chunk = dirty[start:start + batch]
+            for (n, _, digest), vec in zip(chunk, _embed_post([t for _, t, _ in chunk])):
+                docs[n["label"]] = {"hash": digest, "vec": [round(v, 5) for v in vec]}
+        _save_cache(cache)
+    labels = {n["label"] for n in items}
+    for stale in [k for k in docs if k not in labels]:
+        docs.pop(stale, None)
+    _save_cache(cache)
+    return {n["label"]: docs[n["label"]]["vec"] for n in items if n["label"] in docs}
+
+
+def _lexical_scores(items: list[dict], query: str, full: bool) -> list[tuple[float, dict]]:
+    """BM25 over the notes: no model, no process, no index on disk.
+
+    Length normalisation is the point: without it the 26 KB local-llm note wins
+    every query simply by containing more words.
     """
-    items = _all_notes()
-    if not items:
-        print("similar: no notes")
-        return 1
     docs = []
     for n in items:
         tags = n["tags"] if isinstance(n["tags"], list) else [str(n["tags"])]
@@ -606,31 +785,125 @@ def cmd_similar(query: str, top: int = 5, full: bool = False) -> int:
         if full:
             text += " " + n["path"].read_text(encoding="utf-8-sig")
         docs.append((n, _tokens(text)))
+    if not docs:
+        return []
+    total = len(docs)
+    avgdl = sum(len(toks) for _, toks in docs) / total or 1.0
     df: dict[str, int] = {}
     for _, toks in docs:
         for token in set(toks):
             df[token] = df.get(token, 0) + 1
-    total = len(docs)
-    idf = {t: math.log((total + 1) / (c + 0.5)) for t, c in df.items()}
-    qvec = _vector(_tokens(query), idf)
-    if not qvec:
+    terms = _tokens(query)
+    if not terms:
+        return []
+    k1, b = 1.2, 0.75
+    out = []
+    for n, toks in docs:
+        tf: dict[str, int] = {}
+        for token in toks:
+            tf[token] = tf.get(token, 0) + 1
+        dl = len(toks) or 1
+        score = 0.0
+        for term in terms:
+            f = tf.get(term)
+            if not f:
+                continue
+            idf = math.log(1 + (total - df.get(term, 0) + 0.5) / (df.get(term, 0) + 0.5))
+            score += idf * (f * (k1 + 1)) / (f + k1 * (1 - b + b * dl / avgdl))
+        out.append((score / len(terms), n))
+    return out
+
+
+def cmd_similar(query: str, top: int = 5, full: bool = True,
+                embed_mode: str = "auto", keep: bool = False) -> int:
+    """Rank notes by meaning if an embedder is already running, else by words.
+
+    Nothing is spawned from here: the lexical path needs no process, and a
+    separate embedder costs ~940 MB resident, which this machine cannot spare
+    while Strata's experts are pinned. `kb.py embed --start` is the manual opt-in.
+
+    Embeddings, when present, are blended with the lexical score: vectors handle
+    paraphrase, tokens keep paths, versions and identifiers exact.
+    """
+    items = _all_notes()
+    if not items:
+        print("similar: no notes")
+        return 1
+    lex = _lexical_scores(items, query, full)
+    lexical_only = lex or [(0.0, n) for n in items]
+    top_lex = max((s for s, _ in lexical_only), default=0.0) or 1.0
+    lex_norm = {n["label"]: s / top_lex for s, n in lexical_only}
+
+    vectors = None
+    mode = "lexical"
+    if embed_mode != "off" and EMBED_MODEL.is_file() and EMBED_SERVER.is_file() and _embed_health():
+        try:
+            vectors = _vectors(items)
+            qv = _embed_post([f"task: search result | query: {query}"])[0]
+            mode = "embeddings" if not lex else "blended"
+        except Exception as exc:
+            print(f"similar: embedder failed ({exc}); using lexical")
+            vectors = None
+
+    if not lex and not vectors:
         print("similar: the query has no usable words")
         return 2
+
     scored = []
-    for n, toks in docs:
-        dvec = _vector(toks, idf)
-        scored.append((sum(w * qvec.get(t, 0.0) for t, w in dvec.items()), n))
+    for n in items:
+        label = n["label"]
+        score = lex_norm.get(label, 0.0)
+        if vectors and label in vectors:
+            score = EMBED_BLEND * _cos(qv, vectors[label]) + (1 - EMBED_BLEND) * score
+        scored.append((score, n))
     scored.sort(key=lambda pair: (-pair[0], pair[1]["label"]))
-    hits = [(s, n) for s, n in scored if s > 0.01][:top]
+    hits = [(s, n) for s, n in scored if s > 0.02][:top]
     if not hits:
         if not full:
             print("similar: no answer-block match, searching full text")
-            return cmd_similar(query, top, True)
+            return cmd_similar(query, top, True, embed, keep)
         print(f"similar: nothing matches '{query}'")
         return 1
-    print(f"similar: {len(hits)} of {total} notes for '{query}'" + (" (full text)" if full else ""))
+    print(f"similar: {len(hits)} of {len(items)} notes for '{query}' ({mode}"
+          + (", full text" if full else "") + ")")
+    if mode == "lexical" and embed_mode == "auto" and EMBED_MODEL.is_file():
+        print("  hint: lexical only (no helper process); semantic recall needs `kb.py embed --start`")
     for score, n in hits:
         print(f"  {score:.2f}  {n['label']:<30} {n['answers'][:70]}")
+    return 0
+
+
+def cmd_embed(action: str = "rebuild", keep: bool = False) -> int:
+    if action == "status":
+        running = _embed_health()
+        cache = _load_cache()
+        print(f"server   {'up at ' + EMBED_BASE if running else 'down'}")
+        state = "present" if EMBED_MODEL.is_file() else "MISSING"
+        print(f"model    {EMBED_MODEL.name} {state}")
+        print(f"cache    {len(cache['docs'])} note(s), dim {cache['dim']}")
+        print(f"paths    model={EMBED_MODEL}")
+        print(f"         cache={EMBED_CACHE}")
+        return 0 if EMBED_MODEL.is_file() else 1
+    if action == "stop":
+        print("embed: stopped" if _embed_stop() else "embed: nothing to stop")
+        return 0
+    started = False
+    if not _embed_health():
+        started = _embed_start()
+    if not _embed_health():
+        print("embed: server unavailable")
+        return 1
+    if action == "start":
+        print(f"embed: running at {EMBED_BASE}")
+        return 0
+    items = _all_notes()
+    vectors = _vectors(items)
+    if started and not keep:
+        _embed_stop()
+    if not vectors:
+        print("embed: no notes to index")
+        return 1
+    print(f"embed: {len(vectors)} note(s) cached, dim {len(next(iter(vectors.values())))}")
     return 0
 
 
@@ -791,7 +1064,11 @@ def main(argv: list[str]) -> int:
         return cmd_stale(days)
     if cmd == "similar" and rest:
         top = 5
-        full = "--full" in rest
+        full = "--answers" not in rest
+        keep = "--keep" in rest
+        embed_mode = "auto"
+        if "--lex" in rest:
+            embed_mode = "off"
         words = []
         i = 0
         while i < len(rest):
@@ -802,7 +1079,7 @@ def main(argv: list[str]) -> int:
                     print("similar: --top takes a number")
                     return 2
                 i += 2
-            elif rest[i] == "--full":
+            elif rest[i] in ("--answers", "--lex", "--keep"):
                 i += 1
             else:
                 words.append(rest[i])
@@ -810,7 +1087,16 @@ def main(argv: list[str]) -> int:
         if not words:
             print("similar: need a query")
             return 2
-        return cmd_similar(" ".join(words), top, full)
+        return cmd_similar(" ".join(words), top, full, embed_mode, keep)
+    if cmd == "embed":
+        action = "rebuild"
+        if "--status" in rest:
+            action = "status"
+        elif "--stop" in rest:
+            action = "stop"
+        elif "--start" in rest:
+            action = "start"
+        return cmd_embed(action, "--keep" in rest)
     if cmd == "rmfact" and rest:
         return cmd_rmfact(" ".join(rest))
     print(__doc__)

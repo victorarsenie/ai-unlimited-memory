@@ -47,8 +47,9 @@ python kb.py consolidate [--apply]       # near-duplicate merge proposals
 python kb.py project                     # overlay matching the current directory
 python kb.py project E:\AI\bench         # overlay for a given directory
 python kb.py stale [--days 30]           # untouched notes and passed expires dates
-python kb.py similar "expert cache"      # lexical recall over the answers
-python kb.py similar "spill" --full      # same, matching the evidence tail too
+python kb.py similar "expert cache"      # BM25 over the notes, no process
+python kb.py similar "spill" --answers   # restrict to the Answer block
+python kb.py embed --status              # optional embedder state (off by default)
 ```
 
 ## Write paths
@@ -66,6 +67,29 @@ Three ways in, one corpus:
    `knowledge/pending/<date>.md`. Candidates are never injected and never merged
    automatically; promotion is one command. Compaction checkpoints and harness
    wrappers are filtered out by length and marker.
+
+## Recall beyond the map
+
+The map holds 3,000 characters, so notes eventually fall off it. Two dependency-free
+routes cover that, both reading files only — no process, no index, no network:
+
+- `kb.py search "<term>"` greps every note and memory file.
+- `kb.py similar "<question>"` ranks notes with BM25 over the whole note
+  (`--answers` narrows it to the Answer block). Length normalisation is what makes
+  this usable: without it the 26 KB `local-llm` note wins every query by sheer size.
+
+Measured 2026-10-23 on eight English questions and two Romanian ones, 12 notes:
+BM25 top-1 was 7/8 in English (6/8 with `--answers`) and 0/2 in Romanian. The
+Romanian failure is structural, not a bug: BM25 compares tokens, and the corpus is
+English. The instruction to translate keywords lives in the skill, where the model
+can act on it.
+
+**Optional embedder.** `kb.py embed --start` runs `llama-server --embeddings` with
+`multilingual-e5`-class models; it measures 0.47 cosine for a Romanian question
+against the matching English note versus 0.20 for an unrelated one, so it does close
+the cross-language gap. It is **off by default** and nothing starts it implicitly:
+the helper is ~940 MB resident, and this machine keeps ~20.5 GiB of Strata experts
+pinned in the same RAM. Use it only when Strata is not serving, and stop it after.
 
 ## Project overlays
 

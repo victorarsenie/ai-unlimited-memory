@@ -130,7 +130,7 @@ TOOLS = [
             "properties": {
                 "query": {"type": "string", "description": "The question or topic in words."},
                 "top": {"type": "integer", "description": "How many notes to return (default 5)."},
-                "full": {"type": "boolean", "description": "Also match the evidence tail."},
+                "full": {"type": "boolean", "description": "Match the whole note (default true); false matches the answers only."},
             },
             "required": ["query"],
         },
@@ -182,7 +182,7 @@ def call(name: str, args: dict) -> str:
             kb.cmd_similar,
             str(args.get("query", "")),
             int(args.get("top") or 5),
-            bool(args.get("full", False)),
+            bool(args.get("full", True)),
         )
     raise ValueError(f"unknown tool: {name}")
 

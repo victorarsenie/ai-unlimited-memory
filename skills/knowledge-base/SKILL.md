@@ -26,8 +26,15 @@ always-on files (profile, projects).
 compaction. Treat the injected copy as a table of contents, never as the answer.
 
 1. **Route, then read.** Match the question against the `answers` column, then read
-   the file. If nothing matches: `kb_search` (the tool) or
-   `python kb.py search "<keyword>"`.
+   the file. If nothing matches, in this order:
+   1. `kb_similar("<question>")` — BM25 over the full notes, no model and no
+      process. It returns note files; open the first one.
+   2. `kb_search` (tool) or `python kb.py search "<term>"` — exact strings,
+      numbers, versions, paths that BM25 may rank second.
+   3. Both indexes are **lexical and English**. For a question in Romanian,
+      translate the keywords to English before searching ("cât de repede
+      decodează" -> "decode speed"); otherwise nothing matches.
+   Never answer from the ranking alone: it names a file, it does not state facts.
 2. **Write the moment you learn something durable** — a decision, a measurement, a
    path, a version, a gotcha, a user rule. Same turn:
    `kb_append(topic, "<one line with the number and why>")` — it refreshes the map
@@ -104,6 +111,9 @@ raise the cap.
   `expires:` date has passed. `lint` fails on an expired note until you re-verify
   or delete it.
 - `python kb.py project [path]` — which overlay applies here.
-- `python kb.py similar "<question>"` — lexical ranking when the map gives no
-  match; `--full` also matches the evidence tail. It names notes, it does not
-  answer: open the note.
+- `python kb.py similar "<question>"` — BM25 ranking over the full notes when the
+  map gives no match; `--answers` restricts it to the Answer block. It names
+  notes, it does not answer: open the note.
+- `python kb.py embed --status` — the optional embedder (semantic recall, 940 MB
+  resident). Off by default and never started by `similar`; only `--start` runs
+  it, and it must not run while Strata's experts are pinned.
