@@ -1,10 +1,10 @@
-# Extended memory layer
+﻿# Extended memory layer
 
 This repository holds two things that belong together:
 
-1. **The archive** — `src/personal_memory/`, the SQLite store of imported
+1. **The archive** â€” `src/personal_memory/`, the SQLite store of imported
    conversations, with provenance (unchanged by this layer).
-2. **The knowledge layer** — `knowledge/`, `memory/`, `kb.py` and `adapters/`,
+2. **The knowledge layer** â€” `knowledge/`, `memory/`, `kb.py` and `adapters/`,
    added 2026-10-22. It is what an agent actually reads every turn.
 
 The assistant (character, voice, initiative) lives in a separate repository:
@@ -25,7 +25,10 @@ harness hook instead of relying on the model to remember it. The archive is wher
 the verbatim conversation stays; it is searched, not injected.
 
 Files are canonical. `knowledge/INDEX.md` is generated; delete it and
-`python kb.py index` rebuilds it from the notes' front matter.
+`python kb.py index` rebuilds it from the notes' front matter. The map lists
+**domains** (`models/`, `machine/`, `assistant/`, `memory/`, `workflow/`,
+`projects/`, `research/`); each domain has its own generated `INDEX.md`, read on
+demand, so the injected map stays ~1.4k chars however many notes exist.
 
 ## Commands
 
@@ -35,8 +38,8 @@ python kb.py lint                   # structure + map consistency
 python kb.py stats                  # note count, budget, per-note size
 python kb.py search "expert cache"  # search notes and memory
 python kb.py show local-llm         # print one note
-python kb.py append local-llm "text"     # dated entry under Evidence
-python kb.py append local-llm "text" --source <ref>   # same, with provenance
+python kb.py append models/speeds "text"  # dated entry under Evidence
+python kb.py append models/speeds "text" --source <ref>  # with provenance
 python kb.py rmfact "wrong fact"         # delete every line containing it
 python kb.py pending "candidate"         # queue for review (never injected)
 python kb.py review                      # list candidates
@@ -56,13 +59,13 @@ python kb.py embed --status              # optional embedder state (off by defau
 
 Three ways in, one corpus:
 
-1. **MCP tools** — `adapters/mcp/server.py` exposes `kb_search`, `kb_append`,
+1. **MCP tools** â€” `adapters/mcp/server.py` exposes `kb_search`, `kb_append`,
    `kb_pending`, `kb_review`, `kb_rmfact`, `kb_stats`, `kb_stale` over stdio
    JSON-RPC (no dependencies). OpenCode registers it as `ai-memory` in
    `opencode.jsonc`; any MCP client can use it. This is the preferred path:
    saving is a tool call, not a shell permission prompt.
-2. **CLI** — the same functions, for scripts and harnesses without MCP.
-3. **Automatic capture** — the OpenCode plugin watches the last user message for
+2. **CLI** â€” the same functions, for scripts and harnesses without MCP.
+3. **Automatic capture** â€” the OpenCode plugin watches the last user message for
    phrases like "remember", "decision", "gotcha" and queues the text in
    `knowledge/pending/<date>.md`. Candidates are never injected and never merged
    automatically; promotion is one command. Compaction checkpoints and harness
@@ -71,7 +74,7 @@ Three ways in, one corpus:
 ## Recall beyond the map
 
 The map holds 3,000 characters, so notes eventually fall off it. Two dependency-free
-routes cover that, both reading files only — no process, no index, no network:
+routes cover that, both reading files only â€” no process, no index, no network:
 
 - `kb.py search "<term>"` greps every note and memory file.
 - `kb.py similar "<question>"` ranks notes with BM25 over the whole note
@@ -149,14 +152,14 @@ parentheses, so `kb.py dupes` and `kb.py consolidate` still compare the facts.
 
 ## Ownership
 
-`owner: human` marks a note the user wrote and maintains — `user.md` is the first
+`owner: human` marks a note the user wrote and maintains â€” `user.md` is the first
 one. Agents read it freely but do not write it: `kb_append`, `kb_rmfact` and
 `kb_consolidate` refuse or skip it, and `lint` counts protected notes so the set
 stays visible. Notes without `owner:` are treated as `owner: agent`.
 
 The rule exists because a rewrite is not recoverable from the note itself: an agent
 that "tidies" a rule can change what the rule means. An explicit request from the
-user overrides it — that ask is the permission. The write then carries
+user overrides it â€” that ask is the permission. The write then carries
 `--source "user asked in chat"` (or similar) so the note records that a human
 approved the edit, and a long note should have its proposed line shown before the
 write, not after. `kb.py owner <topic> human|agent` flips the flag.
@@ -185,14 +188,14 @@ checks and reinstalls all of it.
 |---|---|---|
 | `~/.config/opencode/plugins/knowledge-index.ts` | shim generated from `adapters/opencode/knowledge-index.js` | `adapters/opencode/install.ps1` |
 | `~/.config/opencode/AGENTS.md` | `adapters/opencode/AGENTS.md` | `adapters/opencode/install.ps1` |
-| `opencode.jsonc` → `mcp.servers.ai-memory` | `adapters/opencode/mcp.ai-memory.jsonc` | printed by `install.ps1` (that file is not ours to rewrite) |
+| `opencode.jsonc` â†’ `mcp.servers.ai-memory` | `adapters/opencode/mcp.ai-memory.jsonc` | printed by `install.ps1` (that file is not ours to rewrite) |
 | `~/.config/opencode/skills/knowledge-base/SKILL.md` | `skills/knowledge-base/SKILL.md` | `skills/install.ps1` |
 | `D:\Hermes\agent-hooks\knowledge-index.py` | shim generated from `adapters/hermes/knowledge-index.py` | `adapters/hermes/install.ps1` |
-| `D:\Hermes\config.yaml` → `hooks.pre_llm_call` | `adapters/hermes/hooks.snippet.yaml` | `adapters/hermes/install.ps1` (appends when `hooks:` is absent, otherwise prints) |
+| `D:\Hermes\config.yaml` â†’ `hooks.pre_llm_call` | `adapters/hermes/hooks.snippet.yaml` | `adapters/hermes/install.ps1` (appends when `hooks:` is absent, otherwise prints) |
 | `D:\Hermes\skills\memory\knowledge-base\SKILL.md` | `skills/knowledge-base/SKILL.md` | `skills/install.ps1` |
 | injected context in every harness | `memory/rules.md` + `memory/profile.md` + `memory/projects.md` + `knowledge/INDEX.md` + project overlay | the adapters |
 
-The data itself — `knowledge/`, `memory/`, the SQLite archive — never lives in a
+The data itself â€” `knowledge/`, `memory/`, the SQLite archive â€” never lives in a
 harness config, so losing a config loses wiring, not memory.
 
 ## Harnesses

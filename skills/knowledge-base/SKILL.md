@@ -25,22 +25,22 @@ always-on files (profile, projects).
 `python kb.py index`. A harness hook injects it every turn, so it survives
 compaction. Treat the injected copy as a table of contents, never as the answer.
 
-1. **Route, then read.** Match the question against the `answers` column, then read
-   the file. If nothing matches, in this order:
+1. **Route, then read.** The injected map lists **domains**, not notes. Open
+   `knowledge/<domain>/INDEX.md` for that domain's notes, then the note itself. If no
+   domain looks right, in this order:
    1. `kb_similar("<question>")` — BM25 over the full notes, no model and no
-      process. It returns note files; open the first one.
+      process. It returns note paths; open the first one.
    2. `kb_search` (tool) or `python kb.py search "<term>"` — exact strings,
       numbers, versions, paths that BM25 may rank second.
    3. Both indexes are **lexical and English**. For a question in Romanian,
-      translate the keywords to English before searching ("cât de repede
-      decodează" -> "decode speed"); otherwise nothing matches.
+      translate the keywords to English before searching.
    Never answer from the ranking alone: it names a file, it does not state facts.
 2. **Write the moment you learn something durable** — a decision, a measurement, a
    path, a version, a gotcha, a user rule. Same turn:
-   `kb_append(topic, "<one line with the number and why>")` — it refreshes the map
-   itself. Without the MCP tools, the CLI is the same corpus:
-   `python kb.py append <topic> "..."`. Add `source=` (CLI: `--source <ref>`) when
-   the fact rests on a log, config, URL or commit rather than on the conversation.
+   `kb_append("models/speeds", "<one line with the number and why>")` — the topic is
+   always `domain/note`, and the call refreshes the maps itself. Without the MCP
+   tools: `python kb.py append models/speeds "..."`. Add `source=` (CLI:
+   `--source <ref>`) when the fact rests on a log, config, URL or commit.
 3. **Unsure where it belongs, or unverified?** `kb_pending(text)` queues it in
    `knowledge/pending/<date>.md`. It is never injected. The user promotes it with
    `kb.py review --promote N --topic <note>` or drops it with `--clear`.
