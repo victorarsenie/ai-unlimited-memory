@@ -13,6 +13,8 @@ front matter, capped so it stays cheap enough to inject every turn.
     python kb.py search <term>    grep notes and memory
     python kb.py show <topic>     print a note
     python kb.py append <topic> <text>   add a dated finding under Evidence
+    python kb.py append <topic> <text> --source <ref>
+    python kb.py stale [--days N]        notes not touched, and expired ones
     python kb.py rmfact <text>    delete lines containing text (fact-level delete)
     python kb.py pending <text>   queue a capture candidate for review
     python kb.py review           list candidates
@@ -74,6 +76,7 @@ def notes() -> list[dict]:
             "title": str(meta.get("title") or h1),
             "answers": str(meta.get("answers") or "").strip(),
             "updated": str(meta.get("updated") or ""),
+            "expires": str(meta.get("expires") or ""),
             "tags": meta.get("tags") or [],
             "lines": len(body.splitlines()),
             "has_fm": bool(meta),
@@ -155,6 +158,7 @@ def project_notes(folder: Path) -> list[dict]:
             "title": str(meta.get("title") or h1),
             "answers": str(meta.get("answers") or "").strip(),
             "updated": str(meta.get("updated") or ""),
+            "expires": str(meta.get("expires") or ""),
             "tags": meta.get("tags") or [],
             "lines": len(body.splitlines()),
             "has_fm": bool(meta),
@@ -236,6 +240,11 @@ def cmd_lint() -> int:
         problems.append(f"{orphan}: on the map but the file is gone - run index")
     if len(map_text) > MAX_MAP:
         problems.append(f"INDEX.md: {len(map_text)} chars (> {MAX_MAP})")
+    for n in _all_notes():
+        if n["expires"]:
+            age = _age_days(n["expires"])
+            if age is not None and age >= 0:
+                problems.append(f"{n['label']}: expired {n['expires']} - re-verify or delete")
 
     for folder in project_dirs():
         meta = project_meta(folder)
@@ -325,12 +334,15 @@ def cmd_show(topic: str) -> int:
     return 0
 
 
-def cmd_append(topic: str, text: str) -> int:
+def cmd_append(topic: str, text: str, source: str = "") -> int:
     p = note_path(topic)
     raw = p.read_text(encoding="utf-8-sig")
     meta, body = parse_front_matter(raw)
     stamp = date.today().isoformat()
-    entry = f"- {stamp}: {text.strip()}\n"
+    line = text.strip()
+    if source.strip():
+        line += f" (source: {source.strip()})"
+    entry = f"- {stamp}: {line}\n"
 
     if "## Evidence" not in body:
         body = body.rstrip() + "\n\n## Evidence\n\n"
@@ -521,6 +533,52 @@ def cmd_consolidate(apply: bool = False) -> int:
     return cmd_index()
 
 
+def _age_days(stamp: str) -> int | None:
+    try:
+        return (date.today() - date.fromisoformat(stamp[:10])).days
+    except ValueError:
+        return None
+
+
+def _all_notes() -> list[dict]:
+    out = [dict(n, label=n["file"]) for n in notes()]
+    for folder in project_dirs():
+        slug = folder.name
+        out += [dict(n, label=f"projects/{slug}/{n['file']}") for n in project_notes(folder)]
+    return out
+
+
+def cmd_stale(days: int = 30) -> int:
+    """Notes that have not been touched, and notes that carry a passed expires date."""
+    expired, stale, unknown = [], [], []
+    for n in _all_notes():
+        if n["expires"]:
+            age = _age_days(n["expires"])
+            if age is not None and age >= 0:
+                expired.append(n)
+        age = _age_days(n["updated"]) if n["updated"] else None
+        if age is None:
+            unknown.append(n)
+        elif age >= days:
+            stale.append((age, n))
+    if not (expired or stale or unknown):
+        print(f"stale: nothing older than {days} days")
+        return 0
+    if expired:
+        print("expired:")
+        for n in expired:
+            print(f"  {n['label']}  (expires {n['expires']}) - re-verify or delete")
+    if stale:
+        print(f"not updated in {days}+ days:")
+        for age, n in sorted(stale, key=lambda x: -x[0]):
+            print(f"  {age:>4}d  {n['label']}  last {n['updated']}")
+    if unknown:
+        print("no updated date:")
+        for n in unknown:
+            print(f"  {n['label']}")
+    return 1 if expired else 0
+
+
 def cmd_stats() -> int:
     items = notes()
     map_size = len(INDEX.read_text(encoding="utf-8")) if INDEX.is_file() else 0
@@ -612,7 +670,31 @@ def main(argv: list[str]) -> int:
     if cmd == "show" and rest:
         return cmd_show(rest[0])
     if cmd == "append" and len(rest) >= 2:
-        return cmd_append(rest[0], " ".join(rest[1:]))
+        source = ""
+        words = []
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--source" and i + 1 < len(rest):
+                source = rest[i + 1]
+                i += 2
+            else:
+                words.append(rest[i])
+                i += 1
+        if len(words) < 2:
+            print("append: need <topic> <text> [--source <ref>]")
+            return 2
+        return cmd_append(words[0], " ".join(words[1:]), source)
+    if cmd == "stale":
+        days = 30
+        if "--days" in rest:
+            at = rest.index("--days")
+            if at + 1 < len(rest):
+                try:
+                    days = int(rest[at + 1])
+                except ValueError:
+                    print("stale: --days takes a number")
+                    return 2
+        return cmd_stale(days)
     if cmd == "rmfact" and rest:
         return cmd_rmfact(" ".join(rest))
     print(__doc__)

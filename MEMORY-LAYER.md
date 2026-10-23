@@ -36,6 +36,7 @@ python kb.py stats                  # note count, budget, per-note size
 python kb.py search "expert cache"  # search notes and memory
 python kb.py show local-llm         # print one note
 python kb.py append local-llm "text"     # dated entry under Evidence
+python kb.py append local-llm "text" --source <ref>   # same, with provenance
 python kb.py rmfact "wrong fact"         # delete every line containing it
 python kb.py pending "candidate"         # queue for review (never injected)
 python kb.py review                      # list candidates
@@ -45,6 +46,7 @@ python kb.py dupes                       # repeated evidence lines
 python kb.py consolidate [--apply]       # near-duplicate merge proposals
 python kb.py project                     # overlay matching the current directory
 python kb.py project E:\AI\bench         # overlay for a given directory
+python kb.py stale [--days 30]           # untouched notes and passed expires dates
 ```
 
 ## Write paths
@@ -52,10 +54,10 @@ python kb.py project E:\AI\bench         # overlay for a given directory
 Three ways in, one corpus:
 
 1. **MCP tools** — `adapters/mcp/server.py` exposes `kb_search`, `kb_append`,
-   `kb_pending`, `kb_review`, `kb_rmfact`, `kb_stats` over stdio JSON-RPC (no
-   dependencies). OpenCode registers it as `ai-memory` in `opencode.jsonc`; any
-   MCP client can use it. This is the preferred path: saving is a tool call, not
-   a shell permission prompt.
+   `kb_pending`, `kb_review`, `kb_rmfact`, `kb_stats`, `kb_stale` over stdio
+   JSON-RPC (no dependencies). OpenCode registers it as `ai-memory` in
+   `opencode.jsonc`; any MCP client can use it. This is the preferred path:
+   saving is a tool call, not a shell permission prompt.
 2. **CLI** — the same functions, for scripts and harnesses without MCP.
 3. **Automatic capture** — the OpenCode plugin watches the last user message for
    phrases like "remember", "decision", "gotcha" and queues the text in
@@ -94,6 +96,7 @@ front matter and an `answers` line, and that its `INDEX.md` is current.
 title: MoE expert caching
 answers: merged expert cache is a loss on this machine
 updated: 2026-10-22
+expires: 2027-01-31
 tags: [moe, cache, speed]
 ---
 
@@ -101,9 +104,21 @@ tags: [moe, cache, speed]
 
 ## Evidence
 - 2026-10-21: cache 0 = 36-37.5 t/s, 4096 MiB = 24-24.5 t/s (four runs each).
+  (source: `logs/moe-cache-sweep.out`)
 ```
 
 Without `answers:` a note is not on the map and `kb.py lint` fails.
+
+`expires:` is optional and only for facts that stop being true on their own, such
+as a version, a price or a rented machine. When the date passes, `kb.py lint`
+fails and `kb.py stale` lists the note: re-verify it, or delete it. Never use
+`expires:` to express "someone will edit this later" - that is what `updated:`
+and `kb.py stale` are for.
+
+`--source` is optional and belongs on every evidence line that rests on
+something outside the conversation: a log, a config file, a URL, a commit, a
+bench run. The line stays one sentence; provenance rides at the end in
+parentheses, so `kb.py dupes` and `kb.py consolidate` still compare the facts.
 
 ## Harnesses
 

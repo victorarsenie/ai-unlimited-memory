@@ -92,10 +92,16 @@ warning). mem0/supermemory scope per project by default.
 
 ### 6. Provenance and staleness
 
-- `kb.py append --source <archive-id|session-id>` stores where a fact came from;
+Implemented 2026-10-23:
+
+- `kb.py append --source <path|url|commit|measured>` stores where a fact came from;
   PersonalMemory already has the archive to point at.
-- `kb.py review` also lists notes untouched for N days, notes with empty
-  `## Open`, and facts past an optional `expires:` date.
+- `expires:` front matter marks facts that stop being true on their own; once the
+  date passes, `kb.py lint` fails.
+- `kb.py stale [--days N]` lists notes untouched for N days plus every expired
+  note (and exposes the same over MCP as `kb_stale`). Kept separate from
+  `kb.py review`, which is only about *unconfirmed* candidates from the capture
+  queue: one command deletes candidates, the other never changes a file.
 
 ### 7. Cache-aware injection (cost)
 
@@ -165,7 +171,13 @@ Done:
   absolute path first and git origin second; the overlay map is generated per
   project and injected only in that directory (1,200 char cap). `kb.py project`
   answers "which overlay applies here". First overlay: `ai-bench`.
+- **Provenance and staleness** (2026-10-23): `append --source <ref>` tags an
+  evidence line with where it came from; `expires:` front matter marks facts that
+  stop being true on their own, and `kb.py lint` fails once that date passes;
+  `kb.py stale [--days N]` lists notes not touched in N days plus every expired
+  one. Exposed as `kb_stale` / `kb_append(source=...)` over MCP.
 
-Still open: answer-only embeddings (secondary recall), `append --source`,
-staleness review, project scoping for the *transcript* layer (the archive is
-still global).
+Done: **project overlays** (item 5), **provenance and staleness** (item 6).
+
+Still open: answer-only embeddings (secondary recall), project scoping for the
+*transcript* layer (the archive is still global).

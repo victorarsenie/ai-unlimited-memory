@@ -32,7 +32,8 @@ compaction. Treat the injected copy as a table of contents, never as the answer.
    path, a version, a gotcha, a user rule. Same turn:
    `kb_append(topic, "<one line with the number and why>")` — it refreshes the map
    itself. Without the MCP tools, the CLI is the same corpus:
-   `python kb.py append <topic> "..."`.
+   `python kb.py append <topic> "..."`. Add `source=` (CLI: `--source <ref>`) when
+   the fact rests on a log, config, URL or commit rather than on the conversation.
 3. **Unsure where it belongs, or unverified?** `kb_pending(text)` queues it in
    `knowledge/pending/<date>.md`. It is never injected. The user promotes it with
    `kb.py review --promote N --topic <note>` or drops it with `--clear`.
@@ -99,3 +100,7 @@ raise the cap.
   `--apply` to keep the fullest line and drop the rest. Run `index` afterwards.
 - `python kb.py review` — queued candidates; `--promote N --topic <note>` or
   `--clear`.
+- `python kb.py stale [--days N]` — notes not touched in N days, plus notes whose
+  `expires:` date has passed. `lint` fails on an expired note until you re-verify
+  or delete it.
+- `python kb.py project [path]` — which overlay applies here.

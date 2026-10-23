@@ -6,7 +6,7 @@ saving a finding is one tool call and not a permission prompt.
 
     initialize / tools/list / tools/call   (JSON-RPC 2.0 over stdin/stdout)
 
-Tools: kb_search, kb_append, kb_pending, kb_review, kb_rmfact, kb_stats.
+Tools: kb_search, kb_append, kb_pending, kb_review, kb_rmfact, kb_stats, kb_stale.
 No dependencies beyond the standard library; kb.py does the work.
 """
 from __future__ import annotations
@@ -50,6 +50,10 @@ TOOLS = [
             "properties": {
                 "topic": {"type": "string", "description": "Note name without .md, e.g. local-llm."},
                 "text": {"type": "string", "description": "The finding, one sentence."},
+                "source": {
+                    "type": "string",
+                    "description": "Optional provenance: file path, URL, commit, or 'measured'.",
+                },
             },
             "required": ["topic", "text"],
         },
@@ -101,6 +105,18 @@ TOOLS = [
         "description": "Show note count, map budget, per-note sizes and the newest write.",
         "inputSchema": {"type": "object", "properties": {}},
     },
+    {
+        "name": "kb_stale",
+        "description": (
+            "List notes not updated in N days (default 30) and notes whose "
+            "'expires' date has passed. Use to decide whether a note still "
+            "describes the machine."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"days": {"type": "integer", "description": "Age threshold in days."}},
+        },
+    },
 ]
 
 
@@ -121,7 +137,12 @@ def call(name: str, args: dict) -> str:
     if name == "kb_search":
         return run(kb.cmd_search, str(args.get("query", "")))
     if name == "kb_append":
-        return run(kb.cmd_append, str(args.get("topic", "")), str(args.get("text", "")))
+        return run(
+            kb.cmd_append,
+            str(args.get("topic", "")),
+            str(args.get("text", "")),
+            str(args.get("source", "")),
+        )
     if name == "kb_pending":
         return run(kb.cmd_pending, str(args.get("text", "")), str(args.get("session", "")))
     if name == "kb_review":
@@ -136,6 +157,8 @@ def call(name: str, args: dict) -> str:
         return run(kb.cmd_rmfact, str(args.get("text", "")))
     if name == "kb_stats":
         return run(kb.cmd_stats)
+    if name == "kb_stale":
+        return run(kb.cmd_stale, int(args.get("days") or 30))
     raise ValueError(f"unknown tool: {name}")
 
 
