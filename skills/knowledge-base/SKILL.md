@@ -53,6 +53,20 @@ compaction. Treat the injected copy as a table of contents, never as the answer.
    `knowledge/projects/<slug>/`, not in the global notes. Create
    `project.md` there with `paths:` (absolute) or `remotes:` (git origin) so the
    overlay is detected; `kb.py project` prints the slug for a directory.
+6. **Respect `owner:` in the front matter.** `owner: human` means the user wrote the
+   note and its wording is theirs. Do not append, rewrite, reformat or `rmfact` it
+   by default — `kb_append`/`kb_rmfact` refuse and `lint` counts them.
+   When the user explicitly asks you to edit one (a long note they want updated, a
+   rule they changed), that ask is the permission: make the change, then say in one
+   line which human note you wrote and what changed. On a long note, show the
+   proposed line or diff first and write only after they agree. `owner:` is about
+   authorship, not secrecy: read those notes freely, they are usually the most
+   important ones.
+7. **Recurring work keeps a findings file.** Before starting a bench round, a
+   migration or any repeat of a task that has failed before, read the findings file
+   in that project's overlay (`knowledge/projects/<slug>/findings.md`), and append
+   the new lesson to it the same turn it is learned. One line, with the rule that
+   would have prevented the failure.
 
 ## Note format
 
@@ -64,6 +78,7 @@ Every note starts with front matter; without `answers:` it is not indexed and
 title: MoE expert caching
 answers: merged expert cache is a loss on this machine
 updated: 2026-10-22
+owner: agent
 tags: [moe, cache, speed]
 ---
 

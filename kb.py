@@ -13,7 +13,8 @@ front matter, capped so it stays cheap enough to inject every turn.
     python kb.py search <term>    grep notes and memory
     python kb.py show <topic>     print a note
     python kb.py append <topic> <text>   add a dated finding under Evidence
-    python kb.py append <topic> <text> --source <ref>
+    python kb.py append <topic> <text> --source <ref> [--force]
+    python kb.py owner <topic> <human|agent>   who may write the note
     python kb.py stale [--days N]        notes not touched, and expired ones
     python kb.py similar <query>         BM25 recall over the notes (no process)
     python kb.py embed [--status|--start|--stop|--keep]   optional embedding helper
@@ -100,6 +101,7 @@ def notes() -> list[dict]:
             "answers": str(meta.get("answers") or "").strip(),
             "updated": str(meta.get("updated") or ""),
             "expires": str(meta.get("expires") or ""),
+            "owner": str(meta.get("owner") or "agent").strip().lower(),
             "tags": meta.get("tags") or [],
             "lines": len(body.splitlines()),
             "has_fm": bool(meta),
@@ -182,6 +184,7 @@ def project_notes(folder: Path) -> list[dict]:
             "answers": str(meta.get("answers") or "").strip(),
             "updated": str(meta.get("updated") or ""),
             "expires": str(meta.get("expires") or ""),
+            "owner": str(meta.get("owner") or "agent").strip().lower(),
             "tags": meta.get("tags") or [],
             "lines": len(body.splitlines()),
             "has_fm": bool(meta),
@@ -286,7 +289,9 @@ def cmd_lint() -> int:
             problems.append(f"projects/{meta['slug']}/INDEX.md: {size} chars (> {MAX_PROJECT_MAP})")
 
     if not problems:
-        print(f"lint: ok ({len(items)} notes, map {len(map_text)} chars)")
+        protected = sum(1 for n in _all_notes() if n["owner"] == "human")
+        extra = f", {protected} owner: human" if protected else ""
+        print(f"lint: ok ({len(items)} notes, map {len(map_text)} chars{extra})")
         return 0
     print(f"lint: {len(problems)} problem(s)")
     for p in problems:
@@ -352,13 +357,50 @@ def note_path(topic: str) -> Path:
     return p
 
 
+def note_owner(path: Path) -> str:
+    """`owner: human` means the user wrote it; agents need an explicit ask first."""
+    meta, _ = parse_front_matter(path.read_text(encoding="utf-8-sig"))
+    return str(meta.get("owner") or "agent").strip().lower()
+
+
+def write_blocked(path: Path, force: bool, action: str) -> bool:
+    if force or note_owner(path) != "human":
+        return False
+    print(f"{action}: {path.name} is owner: human - ask the user first, "
+          "then rerun with --force after the edit is approved")
+    return True
+
+
+def cmd_owner(topic: str, value: str) -> int:
+    value = value.strip().lower()
+    if value not in ("human", "agent"):
+        print("owner: value must be 'human' or 'agent'")
+        return 2
+    p = note_path(topic)
+    raw = p.read_text(encoding="utf-8-sig")
+    meta, body = parse_front_matter(raw)
+    if not meta:
+        print(f"owner: {p.name} has no front matter")
+        return 2
+    meta["owner"] = value
+    fm = "---\n" + "\n".join(
+        f"{k}: [{', '.join(v)}]" if isinstance(v, list) else f"{k}: {v}"
+        for k, v in meta.items()
+    ) + "\n---\n"
+    p.write_text(fm + body, encoding="utf-8")
+    print(f"owner: {p.name} -> {value}")
+    return cmd_index()
+
+
 def cmd_show(topic: str) -> int:
     print(note_path(topic).read_text(encoding="utf-8"))
     return 0
 
 
-def cmd_append(topic: str, text: str, source: str = "") -> int:
+def cmd_append(topic: str, text: str, source: str = "", force: bool = False) -> int:
     p = note_path(topic)
+    if write_blocked(p, force, "append"):
+        return 3
     raw = p.read_text(encoding="utf-8-sig")
     meta, body = parse_front_matter(raw)
     stamp = date.today().isoformat()
@@ -387,12 +429,16 @@ def cmd_append(topic: str, text: str, source: str = "") -> int:
     return cmd_index()
 
 
-def cmd_rmfact(text: str) -> int:
+def cmd_rmfact(text: str, force: bool = False) -> int:
     needle = text.lower()
     removed = 0
+    skipped = 0
     for folder in (KB, MEM):
         for p in sorted(folder.glob("*.md")):
             if p.name == "INDEX.md":
+                continue
+            if not force and note_owner(p) == "human":
+                skipped += 1
                 continue
             lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
             keep = [ln for ln in lines if needle not in ln.lower()]
@@ -400,6 +446,8 @@ def cmd_rmfact(text: str) -> int:
                 removed += len(lines) - len(keep)
                 p.write_text("".join(keep), encoding="utf-8")
                 print(f"{p.name}: removed {len(lines) - len(keep)} line(s)")
+    if skipped:
+        print(f"-- {skipped} owner: human note(s) skipped (rerun with --force if approved)")
     print(f"-- {removed} line(s) removed")
     return cmd_index()
 
@@ -500,8 +548,12 @@ def _jaccard(a: set[str], b: set[str]) -> float:
 def cmd_consolidate(apply: bool = False) -> int:
     """Cluster evidence lines that say nearly the same thing; keep the fullest."""
     items = []
+    skipped = 0
     for p in sorted(KB.glob("*.md")):
         if p.name == "INDEX.md":
+            continue
+        if note_owner(p) == "human":
+            skipped += 1
             continue
         for raw in p.read_text(encoding="utf-8").splitlines():
             if not raw.strip().startswith("- "):
@@ -523,7 +575,8 @@ def cmd_consolidate(apply: bool = False) -> int:
 
     groups = [c for c in clusters if len(c["items"]) > 1]
     if not groups:
-        print("consolidate: no near-duplicates")
+        print("consolidate: no near-duplicates"
+              + (f" ({skipped} owner: human note(s) untouched)" if skipped else ""))
         return 0
 
     print(f"consolidate: {len(groups)} cluster(s)")
@@ -1038,19 +1091,24 @@ def main(argv: list[str]) -> int:
         return cmd_show(rest[0])
     if cmd == "append" and len(rest) >= 2:
         source = ""
+        force = "--force" in rest
         words = []
         i = 0
         while i < len(rest):
             if rest[i] == "--source" and i + 1 < len(rest):
                 source = rest[i + 1]
                 i += 2
+            elif rest[i] == "--force":
+                i += 1
             else:
                 words.append(rest[i])
                 i += 1
         if len(words) < 2:
-            print("append: need <topic> <text> [--source <ref>]")
+            print("append: need <topic> <text> [--source <ref>] [--force]")
             return 2
-        return cmd_append(words[0], " ".join(words[1:]), source)
+        return cmd_append(words[0], " ".join(words[1:]), source, force)
+    if cmd == "owner" and len(rest) >= 2:
+        return cmd_owner(rest[0], rest[1])
     if cmd == "stale":
         days = 30
         if "--days" in rest:
@@ -1098,7 +1156,7 @@ def main(argv: list[str]) -> int:
             action = "start"
         return cmd_embed(action, "--keep" in rest)
     if cmd == "rmfact" and rest:
-        return cmd_rmfact(" ".join(rest))
+        return cmd_rmfact(" ".join(w for w in rest if w != "--force"), "--force" in rest)
     print(__doc__)
     return 2
 

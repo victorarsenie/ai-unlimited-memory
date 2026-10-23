@@ -123,6 +123,7 @@ title: MoE expert caching
 answers: merged expert cache is a loss on this machine
 updated: 2026-10-22
 expires: 2027-01-31
+owner: agent
 tags: [moe, cache, speed]
 ---
 
@@ -145,6 +146,20 @@ and `kb.py stale` are for.
 something outside the conversation: a log, a config file, a URL, a commit, a
 bench run. The line stays one sentence; provenance rides at the end in
 parentheses, so `kb.py dupes` and `kb.py consolidate` still compare the facts.
+
+## Ownership
+
+`owner: human` marks a note the user wrote and maintains — `user.md` is the first
+one. Agents read it freely but do not write it: `kb_append`, `kb_rmfact` and
+`kb_consolidate` refuse or skip it, and `lint` counts protected notes so the set
+stays visible. Notes without `owner:` are treated as `owner: agent`.
+
+The rule exists because a rewrite is not recoverable from the note itself: an agent
+that "tidies" a rule can change what the rule means. An explicit request from the
+user overrides it — that ask is the permission. The write then carries
+`--source "user asked in chat"` (or similar) so the note records that a human
+approved the edit, and a long note should have its proposed line shown before the
+write, not after. `kb.py owner <topic> human|agent` flips the flag.
 
 ## Harnesses
 

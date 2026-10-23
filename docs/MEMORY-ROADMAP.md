@@ -189,6 +189,14 @@ Done:
   stop being true on their own, and `kb.py lint` fails once that date passes;
   `kb.py stale [--days N]` lists notes not touched in N days plus every expired
   one. Exposed as `kb_stale` / `kb_append(source=...)` over MCP.
+- **Ownership** (2026-10-23): `owner: human` protects a note the user maintains;
+  writes are refused unless the user asked in that conversation, in which case
+  `--force` is the explicit override and `--source` records the approval.
+  `kb.py owner <topic> human|agent` flips it; `lint` counts protected notes.
+  First protected note: `user.md`.
+- **Findings files** (2026-10-23): `knowledge/projects/<slug>/findings.md` holds
+  the lessons from recurring work, read before the next run. First one:
+  `ai-bench/findings.md` (probe clobbering, control-arm rule, port 8080).
 
 Done: **project overlays** (item 5), **provenance and staleness** (item 6),
 **lexical recall** (item 4, dependency-free half).

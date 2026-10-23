@@ -55,6 +55,13 @@ TOOLS = [
                     "type": "string",
                     "description": "Optional provenance: file path, URL, commit, or 'measured'.",
                 },
+                "force": {
+                    "type": "boolean",
+                    "description": (
+                        "Only for a note whose front matter says owner: human, and only "
+                        "after the user explicitly asked you to edit it in this conversation."
+                    ),
+                },
             },
             "required": ["topic", "text"],
         },
@@ -94,10 +101,20 @@ TOOLS = [
     },
     {
         "name": "kb_rmfact",
-        "description": "Delete every line containing the given text. Use only when the user asks to forget something.",
+        "description": (
+            "Delete every line containing the given text. Use only when the user asks "
+            "to forget something. Notes marked owner: human are skipped unless force is "
+            "set after an explicit ask."
+        ),
         "inputSchema": {
             "type": "object",
-            "properties": {"text": {"type": "string", "description": "Text to match."}},
+            "properties": {
+                "text": {"type": "string", "description": "Text to match."},
+                "force": {
+                    "type": "boolean",
+                    "description": "Also apply to owner: human notes, after an explicit ask.",
+                },
+            },
             "required": ["text"],
         },
     },
@@ -160,6 +177,7 @@ def call(name: str, args: dict) -> str:
             str(args.get("topic", "")),
             str(args.get("text", "")),
             str(args.get("source", "")),
+            bool(args.get("force", False)),
         )
     if name == "kb_pending":
         return run(kb.cmd_pending, str(args.get("text", "")), str(args.get("session", "")))
@@ -172,7 +190,7 @@ def call(name: str, args: dict) -> str:
             bool(args.get("clear", False)),
         )
     if name == "kb_rmfact":
-        return run(kb.cmd_rmfact, str(args.get("text", "")))
+        return run(kb.cmd_rmfact, str(args.get("text", "")), bool(args.get("force", False)))
     if name == "kb_stats":
         return run(kb.cmd_stats)
     if name == "kb_stale":
