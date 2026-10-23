@@ -138,3 +138,26 @@ Re-injecting 3.6 KB on every model request invalidates the provider prompt cache
 4. Search tool, then optional answers-only embeddings.
 5. Project overlays, provenance, staleness.
 6. Cache-aware injection once the corpus is stable enough to hash.
+
+## Status 2026-10-22
+
+Done:
+
+- **Write path**: `adapters/mcp/server.py` (stdlib JSON-RPC) exposes `kb_search`,
+  `kb_append`, `kb_pending`, `kb_review`, `kb_rmfact`, `kb_stats`; registered in
+  `opencode.jsonc` as `ai-memory`. Verified from an OpenCode run: all four calls
+  returned the expected output.
+- **Pending capture**: the plugin queues keyword-matched user messages to
+  `knowledge/pending/<date>.md`, with length/marker filters so compaction
+  checkpoints are not captured. `kb.py review` lists, `--promote N --topic T`
+  appends and removes, `--clear` drops.
+- **Consolidation**: `kb.py dupes` (exact after normalisation) and
+  `kb.py consolidate` (Jaccard ≥ 0.85 clusters, dry run by default, `--apply`
+  keeps the fullest line).
+- **Cache hint**: the injected system part carries `cache: {type:"ephemeral"}`.
+  Deliberately *not* skipping injection when the map is unchanged: the hook builds
+  a fresh `system` array per request, so skipping risks losing memory entirely.
+  The hint gets the cost benefit without that risk.
+
+Still open: answer-only embeddings (secondary recall), project overlays,
+`append --source`, staleness review.

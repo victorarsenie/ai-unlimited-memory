@@ -32,11 +32,34 @@ Files are canonical. `knowledge/INDEX.md` is generated; delete it and
 ```powershell
 python kb.py index                  # rebuild knowledge/INDEX.md (<= 3000 chars)
 python kb.py lint                   # structure + map consistency
+python kb.py stats                  # note count, budget, per-note size
 python kb.py search "expert cache"  # search notes and memory
 python kb.py show local-llm         # print one note
 python kb.py append local-llm "text"     # dated entry under Evidence
 python kb.py rmfact "wrong fact"         # delete every line containing it
+python kb.py pending "candidate"         # queue for review (never injected)
+python kb.py review                      # list candidates
+python kb.py review --promote 1 --topic local-llm
+python kb.py review --clear
+python kb.py dupes                       # repeated evidence lines
+python kb.py consolidate [--apply]       # near-duplicate merge proposals
 ```
+
+## Write paths
+
+Three ways in, one corpus:
+
+1. **MCP tools** — `adapters/mcp/server.py` exposes `kb_search`, `kb_append`,
+   `kb_pending`, `kb_review`, `kb_rmfact`, `kb_stats` over stdio JSON-RPC (no
+   dependencies). OpenCode registers it as `ai-memory` in `opencode.jsonc`; any
+   MCP client can use it. This is the preferred path: saving is a tool call, not
+   a shell permission prompt.
+2. **CLI** — the same functions, for scripts and harnesses without MCP.
+3. **Automatic capture** — the OpenCode plugin watches the last user message for
+   phrases like "remember", "decision", "gotcha" and queues the text in
+   `knowledge/pending/<date>.md`. Candidates are never injected and never merged
+   automatically; promotion is one command. Compaction checkpoints and harness
+   wrappers are filtered out by length and marker.
 
 ## Note format
 
@@ -62,8 +85,12 @@ Without `answers:` a note is not on the map and `kb.py lint` fails.
   reads `MEMORY_HOME` (default `E:\AI\memory\ai-unlimited-memory`), injects
   `memory/*.md` and `knowledge/INDEX.md`. Install with
   `adapters/hermes/install.ps1`; it backs up the previous hook and writes a shim.
-- **OpenCode**: `adapters/opencode/knowledge-index.js` pushes a synthetic text
-  part on `chat.message`, the same mechanism `opencode-mem` uses.
+- **OpenCode**: `adapters/opencode/knowledge-index.js` exports `buildContext()`
+  (memory + map) and `captureCandidate()`; the installed v2 shim
+  (`~/.config/opencode/plugins/knowledge-index.ts`) pushes the context into
+  `event.system` with an ephemeral cache hint and calls the capture on each
+  request. Install with `adapters/opencode/install.ps1`.
+- **Any MCP client**: run `adapters/mcp/server.py`; see *Write paths* above.
 
 ## Privacy
 

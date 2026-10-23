@@ -6,24 +6,35 @@ front matter, capped so it stays cheap enough to inject every turn.
 
     python kb.py index            rebuild knowledge/INDEX.md
     python kb.py lint             check structure and the map
+    python kb.py stats            sizes and budget
+    python kb.py dupes            repeated evidence lines
     python kb.py search <term>    grep notes and memory
     python kb.py show <topic>     print a note
     python kb.py append <topic> <text>   add a dated finding under Evidence
     python kb.py rmfact <text>    delete lines containing text (fact-level delete)
+    python kb.py pending <text>   queue a capture candidate for review
+    python kb.py review           list candidates
+    python kb.py review --promote <n> --topic <topic>
+    python kb.py review --clear
+    python kb.py consolidate      propose near-duplicate merges
+    python kb.py consolidate --apply
 """
 from __future__ import annotations
 
+import hashlib
 import re
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 KB = ROOT / "knowledge"
 MEM = ROOT / "memory"
+PENDING = KB / "pending"
 INDEX = KB / "INDEX.md"
 MAX_MAP = 3000          # characters, injected every turn
 MAX_NOTE_LINES = 400    # a note bigger than this is a document, split it
+MAX_PENDING_CHARS = 800  # one candidate, not a transcript
 
 FM = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.S)
 
@@ -158,6 +169,11 @@ def cmd_search(term: str) -> int:
     return 0 if hits else 1
 
 
+def pending_file(day: str | None = None) -> Path:
+    PENDING.mkdir(parents=True, exist_ok=True)
+    return PENDING / f"{(day or date.today().isoformat())}.md"
+
+
 def note_path(topic: str) -> Path:
     topic = topic if topic.endswith(".md") else topic + ".md"
     p = KB / topic
@@ -194,8 +210,8 @@ def cmd_append(topic: str, text: str) -> int:
     else:
         raw = body
     p.write_text(raw, encoding="utf-8")
-    print(f"appended to {p.name}; run `kb.py index` to refresh the map")
-    return 0
+    print(f"appended to {p.name}")
+    return cmd_index()
 
 
 def cmd_rmfact(text: str) -> int:
@@ -211,8 +227,160 @@ def cmd_rmfact(text: str) -> int:
                 removed += len(lines) - len(keep)
                 p.write_text("".join(keep), encoding="utf-8")
                 print(f"{p.name}: removed {len(lines) - len(keep)} line(s)")
-    print(f"-- {removed} line(s) removed; run `kb.py index`")
+    print(f"-- {removed} line(s) removed")
+    return cmd_index()
+
+
+def cmd_pending(text: str, session: str = "") -> int:
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        print("pending: empty text")
+        return 2
+    if len(text) > MAX_PENDING_CHARS:
+        text = text[:MAX_PENDING_CHARS].rsplit(" ", 1)[0] + " ..."
+    p = pending_file()
+    digest = hashlib.sha1(text.lower().encode("utf-8")).hexdigest()[:12]
+    existing = p.read_text(encoding="utf-8") if p.is_file() else ""
+    if digest in existing:
+        print("pending: duplicate, ignored")
+        return 0
+    stamp = datetime.now().strftime("%H:%M:%S")
+    who = f"session={session} " if session else ""
+    line = f"- {stamp} {who}id={digest} {text}\n"
+    with p.open("a", encoding="utf-8", newline="\n") as fh:
+        fh.write(line)
+    print(f"pending: queued in {p.name} ({len(text)} chars)")
     return 0
+
+
+def _pending_entries() -> list[dict]:
+    out = []
+    if not PENDING.is_dir():
+        return out
+    for p in sorted(PENDING.glob("*.md")):
+        for raw in p.read_text(encoding="utf-8").splitlines():
+            if not raw.strip().startswith("- "):
+                continue
+            body = re.sub(r"^- \d{2}:\d{2}:\d{2}\s+", "", raw.strip())
+            body = re.sub(r"^session=\S+\s+", "", body)
+            body = re.sub(r"^id=[0-9a-f]{12}\s+", "", body)
+            out.append({"file": p, "raw": raw, "text": body})
+    return out
+
+
+def cmd_review(promote: str | None = None, topic: str | None = None, clear: bool = False) -> int:
+    entries = _pending_entries()
+    if clear:
+        for p in sorted(PENDING.glob("*.md")):
+            p.unlink()
+        print(f"review: cleared {len(entries)} candidate(s)")
+        return 0
+    if promote:
+        if not topic:
+            print("review: --promote needs --topic <note>")
+            return 2
+        if promote == "all":
+            chosen = entries
+        else:
+            try:
+                idx = int(promote)
+            except ValueError:
+                print("review: --promote takes a number or 'all'")
+                return 2
+            if not 1 <= idx <= len(entries):
+                print(f"review: no candidate {idx} (have {len(entries)})")
+                return 2
+            chosen = [entries[idx - 1]]
+        for e in chosen:
+            cmd_append(topic, e["text"])
+        names = {e["file"] for e in chosen}
+        for p in names:
+            drop = [e["raw"] for e in chosen if e["file"] == p]
+            lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+            kept = [ln for ln in lines if ln.rstrip("\n") not in drop]
+            if kept:
+                p.write_text("".join(kept), encoding="utf-8", newline="\n")
+            else:
+                p.unlink()
+        print(f"review: promoted {len(chosen)} candidate(s) to {topic}")
+        return 0
+    if not entries:
+        print("review: no pending candidates")
+        return 0
+    print(f"review: {len(entries)} candidate(s) in {PENDING.relative_to(ROOT)}")
+    for i, e in enumerate(entries, 1):
+        print(f"  [{i}] {e['file'].stem}  {e['text'][:160]}")
+    print("promote with: kb.py review --promote N --topic <note>   (or --clear)")
+    return 0
+
+
+def _norm_tokens(text: str) -> set[str]:
+    return {t for t in re.findall(r"[a-z0-9]+", text.lower()) if len(t) > 2}
+
+
+def _jaccard(a: set[str], b: set[str]) -> float:
+    if not a or not b:
+        return 0.0
+    return len(a & b) / len(a | b)
+
+
+def cmd_consolidate(apply: bool = False) -> int:
+    """Cluster evidence lines that say nearly the same thing; keep the fullest."""
+    items = []
+    for p in sorted(KB.glob("*.md")):
+        if p.name == "INDEX.md":
+            continue
+        for raw in p.read_text(encoding="utf-8").splitlines():
+            if not raw.strip().startswith("- "):
+                continue
+            body = re.sub(r"^- \d{4}-\d{2}-\d{2}:\s*", "", raw.strip())
+            tokens = _norm_tokens(body)
+            if len(tokens) < 6:
+                continue
+            items.append({"file": p, "raw": raw.rstrip("\n"), "text": body, "tokens": tokens})
+
+    clusters: list[dict] = []
+    for it in items:
+        for c in clusters:
+            if _jaccard(it["tokens"], c["rep"]) >= 0.85:
+                c["items"].append(it)
+                break
+        else:
+            clusters.append({"rep": it["tokens"], "items": [it]})
+
+    groups = [c for c in clusters if len(c["items"]) > 1]
+    if not groups:
+        print("consolidate: no near-duplicates")
+        return 0
+
+    print(f"consolidate: {len(groups)} cluster(s)")
+    remove: dict[Path, list[str]] = {}
+    for c in groups:
+        keeper = max(c["items"], key=lambda x: (len(x["text"]), x["raw"]))
+        print(f"  keep  {keeper['file'].name}: {keeper['text'][:130]}")
+        for it in c["items"]:
+            if it is keeper:
+                continue
+            print(f"  drop  {it['file'].name}: {it['text'][:130]}")
+            remove.setdefault(it["file"], []).append(it["raw"])
+
+    if not apply:
+        print("-- dry run; rerun with --apply to drop the redundant lines")
+        return 0
+
+    for p, raws in remove.items():
+        lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+        pending = list(raws)
+        kept = []
+        for ln in lines:
+            key = ln.rstrip("\n")
+            if key in pending:
+                pending.remove(key)
+                continue
+            kept.append(ln)
+        p.write_text("".join(kept), encoding="utf-8", newline="\n")
+    print(f"consolidate: removed {sum(len(v) for v in remove.values())} line(s)")
+    return cmd_index()
 
 
 def cmd_stats() -> int:
@@ -268,6 +436,37 @@ def main(argv: list[str]) -> int:
         return cmd_stats()
     if cmd == "dupes":
         return cmd_dupes()
+    if cmd == "pending" and rest:
+        session = ""
+        words = []
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--session" and i + 1 < len(rest):
+                session = rest[i + 1]
+                i += 2
+            else:
+                words.append(rest[i])
+                i += 1
+        return cmd_pending(" ".join(words), session)
+    if cmd == "review":
+        promote = topic = None
+        clear = False
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--promote" and i + 1 < len(rest):
+                promote = rest[i + 1]
+                i += 2
+            elif rest[i] == "--topic" and i + 1 < len(rest):
+                topic = rest[i + 1]
+                i += 2
+            elif rest[i] == "--clear":
+                clear = True
+                i += 1
+            else:
+                i += 1
+        return cmd_review(promote, topic, clear)
+    if cmd == "consolidate":
+        return cmd_consolidate("--apply" in rest)
     if cmd == "search" and rest:
         return cmd_search(" ".join(rest))
     if cmd == "show" and rest:

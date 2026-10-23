@@ -1,7 +1,7 @@
 ---
 name: knowledge-base
-description: "Persistent knowledge and memory in ai-unlimited-memory — read the injected map before a task, open the matching note, append durable findings with kb.py in the same turn. Use whenever work produces a durable fact, path, number, decision or gotcha, or when a task touches a known topic."
-version: 3.0.0
+description: "Persistent knowledge and memory in ai-unlimited-memory — read the injected map before a task, open the matching note, save durable findings with the kb_append tool (or kb.py) in the same turn, queue uncertain ones with kb_pending. Use whenever work produces a durable fact, path, number, decision or gotcha, or when a task touches a known topic."
+version: 3.1.0
 author: Victor
 license: MIT
 platforms: [windows, linux, darwin]
@@ -26,13 +26,19 @@ always-on files (profile, projects).
 compaction. Treat the injected copy as a table of contents, never as the answer.
 
 1. **Route, then read.** Match the question against the `answers` column, then read
-   the file. If nothing matches: `python kb.py search "<keyword>"`.
+   the file. If nothing matches: `kb_search` (the tool) or
+   `python kb.py search "<keyword>"`.
 2. **Write the moment you learn something durable** — a decision, a measurement, a
    path, a version, a gotcha, a user rule. Same turn:
-   `python kb.py append <topic> "<one line with the number and why>"`, then
-   `python kb.py index`.
-3. **Delete wrong facts explicitly**: `kb.py rmfact "<text>"`. Never leave a stale
-   line hoping a later note overrides it.
+   `kb_append(topic, "<one line with the number and why>")` — it refreshes the map
+   itself. Without the MCP tools, the CLI is the same corpus:
+   `python kb.py append <topic> "..."`.
+3. **Unsure where it belongs, or unverified?** `kb_pending(text)` queues it in
+   `knowledge/pending/<date>.md`. It is never injected. The user promotes it with
+   `kb.py review --promote N --topic <note>` or drops it with `--clear`.
+4. **Delete wrong facts explicitly**: `kb_rmfact` (tool) or
+   `kb.py rmfact "<text>"`. Never leave a stale line hoping a later note overrides
+   it.
 
 ## Note format
 
@@ -78,3 +84,12 @@ raise the cap.
    paragraph.
 2. `python kb.py index`.
 3. Link it from a related note so the corpus stays navigable.
+
+## Maintenance
+
+- `python kb.py stats` — note count, map budget, per-note size, newest write.
+- `python kb.py dupes` — repeated evidence lines after normalisation.
+- `python kb.py consolidate` — near-duplicate clusters (Jaccard ≥ 0.85); add
+  `--apply` to keep the fullest line and drop the rest. Run `index` afterwards.
+- `python kb.py review` — queued candidates; `--promote N --topic <note>` or
+  `--clear`.

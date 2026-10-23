@@ -1,9 +1,9 @@
 # Local personal data: never commit imported conversations or derived indexes.
 /data/
-/RAW/
-/INDEX/
-/DERIVED/
-/backups/
+**/RAW/
+**/INDEX/
+**/DERIVED/
+**/backups/
 *.sqlite
 *.sqlite3
 *.db
@@ -16,3 +16,13 @@
 
 # Local PDF rendering and build intermediates.
 /tmp/
+
+# User exports are private; the authored synthetic fixture is explicitly allowed below.
+/private-imports/
+/imports/
+/exports/
+**/chatgpt_conversation_history/
+**/chatgpt_conversation_history.zip
+**/user.json
+*.zip
+!examples/synthetic/chatgpt-export.zip
