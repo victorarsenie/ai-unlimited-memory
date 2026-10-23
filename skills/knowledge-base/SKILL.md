@@ -104,3 +104,6 @@ raise the cap.
   `expires:` date has passed. `lint` fails on an expired note until you re-verify
   or delete it.
 - `python kb.py project [path]` — which overlay applies here.
+- `python kb.py similar "<question>"` — lexical ranking when the map gives no
+  match; `--full` also matches the evidence tail. It names notes, it does not
+  answer: open the note.

@@ -6,7 +6,8 @@ saving a finding is one tool call and not a permission prompt.
 
     initialize / tools/list / tools/call   (JSON-RPC 2.0 over stdin/stdout)
 
-Tools: kb_search, kb_append, kb_pending, kb_review, kb_rmfact, kb_stats, kb_stale.
+Tools: kb_search, kb_append, kb_pending, kb_review, kb_rmfact, kb_stats, kb_stale,
+kb_similar.
 No dependencies beyond the standard library; kb.py does the work.
 """
 from __future__ import annotations
@@ -117,6 +118,23 @@ TOOLS = [
             "properties": {"days": {"type": "integer", "description": "Age threshold in days."}},
         },
     },
+    {
+        "name": "kb_similar",
+        "description": (
+            "Rank notes by lexical similarity to a question when the map gives no "
+            "obvious match. Returns note files and their answers line; open the "
+            "note before answering. No model, no network."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The question or topic in words."},
+                "top": {"type": "integer", "description": "How many notes to return (default 5)."},
+                "full": {"type": "boolean", "description": "Also match the evidence tail."},
+            },
+            "required": ["query"],
+        },
+    },
 ]
 
 
@@ -159,6 +177,13 @@ def call(name: str, args: dict) -> str:
         return run(kb.cmd_stats)
     if name == "kb_stale":
         return run(kb.cmd_stale, int(args.get("days") or 30))
+    if name == "kb_similar":
+        return run(
+            kb.cmd_similar,
+            str(args.get("query", "")),
+            int(args.get("top") or 5),
+            bool(args.get("full", False)),
+        )
     raise ValueError(f"unknown tool: {name}")
 
 

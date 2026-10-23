@@ -15,6 +15,7 @@ front matter, capped so it stays cheap enough to inject every turn.
     python kb.py append <topic> <text>   add a dated finding under Evidence
     python kb.py append <topic> <text> --source <ref>
     python kb.py stale [--days N]        notes not touched, and expired ones
+    python kb.py similar <query>         lexical recall over the Answer blocks
     python kb.py rmfact <text>    delete lines containing text (fact-level delete)
     python kb.py pending <text>   queue a capture candidate for review
     python kb.py review           list candidates
@@ -26,6 +27,7 @@ front matter, capped so it stays cheap enough to inject every turn.
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 import sys
 from datetime import date, datetime
@@ -540,6 +542,98 @@ def _age_days(stamp: str) -> int | None:
         return None
 
 
+STOPWORDS = {
+    "the", "and", "for", "with", "that", "this", "from", "into", "are", "was",
+    "were", "not", "but", "its", "has", "have", "had", "you", "your", "our",
+    "out", "all", "can", "will", "when", "what", "which", "who", "how", "why",
+    "than", "then", "them", "they", "there", "their", "about", "over", "under",
+    "after", "before", "also", "only", "more", "most", "less", "very", "use",
+    "used", "using", "one", "two", "three", "four", "five", "any", "each",
+    "does", "did", "why", "get", "got", "make", "made", "still",
+}
+
+
+def _tokens(text: str) -> list[str]:
+    out = []
+    for raw in re.findall(r"[a-z0-9]+", text.lower()):
+        if len(raw) < 3 or raw in STOPWORDS:
+            continue
+        if len(raw) > 4 and raw.endswith("s") and not raw.endswith("ss"):
+            raw = raw[:-1]
+        out.append(raw)
+    return out
+
+
+def _answer_text(path: Path) -> str:
+    """Everything above the first `## ` heading: the Answer block, not the evidence tail."""
+    raw = path.read_text(encoding="utf-8-sig")
+    _, body = parse_front_matter(raw)
+    keep = []
+    for line in body.splitlines():
+        if line.startswith("## "):
+            break
+        keep.append(line)
+    return " ".join(keep)
+
+
+def _vector(tokens: list[str], idf: dict[str, float], default_idf: float = 1.0) -> dict[str, float]:
+    tf: dict[str, int] = {}
+    for token in tokens:
+        tf[token] = tf.get(token, 0) + 1
+    vec = {}
+    for token, count in tf.items():
+        weight = (1 + math.log(count)) * idf.get(token, default_idf)
+        if weight:
+            vec[token] = weight
+    norm = math.sqrt(sum(v * v for v in vec.values())) or 1.0
+    return {t: v / norm for t, v in vec.items()}
+
+
+def cmd_similar(query: str, top: int = 5, full: bool = False) -> int:
+    """Lexical recall over the notes: no model, no network, no index on disk.
+
+    Default ranks the Answer block only (title, answers line, tags); `full` adds
+    the evidence tail, which recalls better but is dominated by long notes.
+    """
+    items = _all_notes()
+    if not items:
+        print("similar: no notes")
+        return 1
+    docs = []
+    for n in items:
+        tags = n["tags"] if isinstance(n["tags"], list) else [str(n["tags"])]
+        text = " ".join([n["title"], n["answers"], _answer_text(n["path"]), " ".join(tags)])
+        if full:
+            text += " " + n["path"].read_text(encoding="utf-8-sig")
+        docs.append((n, _tokens(text)))
+    df: dict[str, int] = {}
+    for _, toks in docs:
+        for token in set(toks):
+            df[token] = df.get(token, 0) + 1
+    total = len(docs)
+    idf = {t: math.log((total + 1) / (c + 0.5)) for t, c in df.items()}
+    qvec = _vector(_tokens(query), idf)
+    if not qvec:
+        print("similar: the query has no usable words")
+        return 2
+    scored = []
+    for n, toks in docs:
+        dvec = _vector(toks, idf)
+        scored.append((sum(w * qvec.get(t, 0.0) for t, w in dvec.items()), n))
+    scored.sort(key=lambda pair: (-pair[0], pair[1]["label"]))
+    hits = [(s, n) for s, n in scored if s > 0.01][:top]
+    if not hits:
+        if not full:
+            print("similar: no answer-block match, searching full text")
+            return cmd_similar(query, top, True)
+        print(f"similar: nothing matches '{query}'")
+        return 1
+    print(f"similar: {len(hits)} of {total} notes for '{query}'" + (" (full text)" if full else ""))
+    for score, n in hits:
+        print(f"  {score:.2f}  {n['label']:<30} {n['answers'][:70]}")
+    return 0
+
+
 def _all_notes() -> list[dict]:
     out = [dict(n, label=n["file"]) for n in notes()]
     for folder in project_dirs():
@@ -695,6 +789,28 @@ def main(argv: list[str]) -> int:
                     print("stale: --days takes a number")
                     return 2
         return cmd_stale(days)
+    if cmd == "similar" and rest:
+        top = 5
+        full = "--full" in rest
+        words = []
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--top" and i + 1 < len(rest):
+                try:
+                    top = int(rest[i + 1])
+                except ValueError:
+                    print("similar: --top takes a number")
+                    return 2
+                i += 2
+            elif rest[i] == "--full":
+                i += 1
+            else:
+                words.append(rest[i])
+                i += 1
+        if not words:
+            print("similar: need a query")
+            return 2
+        return cmd_similar(" ".join(words), top, full)
     if cmd == "rmfact" and rest:
         return cmd_rmfact(" ".join(rest))
     print(__doc__)

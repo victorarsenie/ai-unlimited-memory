@@ -47,6 +47,8 @@ python kb.py consolidate [--apply]       # near-duplicate merge proposals
 python kb.py project                     # overlay matching the current directory
 python kb.py project E:\AI\bench         # overlay for a given directory
 python kb.py stale [--days 30]           # untouched notes and passed expires dates
+python kb.py similar "expert cache"      # lexical recall over the answers
+python kb.py similar "spill" --full      # same, matching the evidence tail too
 ```
 
 ## Write paths

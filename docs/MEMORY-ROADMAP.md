@@ -76,9 +76,18 @@ first step.
 notes the moment they are trimmed from the 3,000-character map.
 
 - Cheapest: expose `kb.py search` as a tool so the model can grep on demand.
+  **Done**: `kb_search` over MCP.
 - Optional second index: embed note titles + `answers` only (not the body),
   stored locally, rebuilt by `kb.py index`; the body stays file-only. Small
   vectors, no new canonical store.
+  **Half done 2026-10-23**: `kb.py similar` ranks notes by TF-IDF cosine over the
+  Answer block, title and tags, with no model, no network and no index on disk
+  (`--full` adds the evidence tail). Measured on eight hand-written questions
+  against the 12 notes: answer-only 6/8 top-1, `--full` 7/8. Both misses are the
+  same shape - the question uses vocabulary that only appears in the evidence
+  ("expert cache spill" vs an answers line that says "engines, quants, context
+  ceilings, speeds"). That is the gap a real embedding model closes; it needs a
+  model file we do not have, so it stays open.
 - Do not embed the corpus; that reintroduces the thing we rejected.
 
 ### 5. Project scoping
@@ -177,7 +186,8 @@ Done:
   `kb.py stale [--days N]` lists notes not touched in N days plus every expired
   one. Exposed as `kb_stale` / `kb_append(source=...)` over MCP.
 
-Done: **project overlays** (item 5), **provenance and staleness** (item 6).
+Done: **project overlays** (item 5), **provenance and staleness** (item 6),
+**lexical recall** (item 4, dependency-free half).
 
-Still open: answer-only embeddings (secondary recall), project scoping for the
-*transcript* layer (the archive is still global).
+Still open: a real embedding model for item 4 (needs a file we do not have),
+project scoping for the *transcript* layer (the archive is still global).
