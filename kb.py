@@ -379,6 +379,10 @@ def cmd_lint() -> int:
 
     if len(map_text) > MAX_MAP:
         problems.append(f"INDEX.md: {len(map_text)} chars (> {MAX_MAP})")
+    for n in _all_notes() + [{"path": p, "label": p.name} for p in sorted(MEM.glob("*.md"))]:
+        raw = n["path"].read_bytes()
+        if raw.startswith(b"\xef\xbb\xbf"):
+            problems.append(f"{n['label']}: UTF-8 BOM - strip it (adapters need plain utf-8)")
     for n in _all_notes():
         if n["expires"]:
             age = _age_days(n["expires"])

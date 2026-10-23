@@ -31,7 +31,7 @@ HEADER = (
 
 def read_capped(path: Path, limit: int) -> str:
     try:
-        text = path.read_text(encoding="utf-8").strip()
+        text = path.read_text(encoding="utf-8-sig").strip()
     except OSError:
         return ""
     if not text:

@@ -107,9 +107,15 @@ export function log(line) {
   }
 }
 
+function readUtf8(path) {
+  // PowerShell's `Set-Content -Encoding utf8` writes a BOM; a leading U+FEFF
+  // breaks the `^---` front-matter regex, so the overlay silently disappears.
+  return readFileSync(path, "utf8").replace(/^\uFEFF/, "");
+}
+
 function readCapped(path, limit) {
   try {
-    const text = readFileSync(path, "utf8").trim();
+    const text = readUtf8(path).trim();
     if (!text) return "";
     if (text.length <= limit) return text;
     return text.slice(0, limit).replace(/\n[^\n]*$/, "") + "\n[truncated]";
@@ -149,7 +155,7 @@ export function projectMetas() {
   for (const slug of dirs) {
     let raw = "";
     try {
-      raw = readFileSync(join(PROJECTS, slug, "project.md"), "utf8");
+      raw = readUtf8(join(PROJECTS, slug, "project.md"));
     } catch {
       continue;
     }
