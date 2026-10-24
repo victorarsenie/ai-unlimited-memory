@@ -62,6 +62,30 @@ mkdir -p ~/.config/opencode/skills/knowledge-base
 cp ~/memory/skills/knowledge-base/SKILL.md ~/.config/opencode/skills/knowledge-base/
 ```
 
+## Manual transfer (no sync daemon)
+
+The simplest arrangement, and the one to prefer if updates are occasional: copy the
+folder once, point at it, and re-copy when it matters.
+
+1. On the PC, copy the whole `E:\AI\memory\ai-unlimited-memory` directory — code **and**
+   the corpus — to the phone, e.g. `Download/memory` in shared storage.
+2. In Termux: `termux-setup-storage`, then
+   `export MEMORY_HOME=~/storage/shared/Download/memory`.
+3. `python $MEMORY_HOME/kb.py lint` — if it reports the same counts as the PC, the copy
+   is intact. `kb.py index` regenerates the maps if needed.
+
+Notes:
+
+- `knowledge/INDEX.md` arrives already generated, so search and the map work before
+  anything is run on the phone.
+- Absolute paths inside notes still say `E:\AI\...`; they are documentation, not links,
+  so they simply do not resolve on Android. Relative links between notes do work.
+- Treat the phone copy as read-mostly. If you write notes on the phone, copy them back
+  by hand before the next transfer, or you will silently overwrite them — the one
+  failure mode of a manual copy is a direction nobody wrote down.
+- Keep `user.md`, `profile.md` and anything medical off the phone unless the device is
+  encrypted; a one-shot copy is also a one-shot disclosure.
+
 ## Rules worth keeping
 
 - `kb.py` is ASCII-only output and stdlib-only, so it runs unchanged on Linux;
