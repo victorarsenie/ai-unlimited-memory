@@ -86,6 +86,22 @@ Notes:
 - Keep `user.md`, `profile.md` and anything medical off the phone unless the device is
   encrypted; a one-shot copy is also a one-shot disclosure.
 
+## Merging the phone back
+
+The phone is a capture device; the PC stays canonical. Nothing is ever copied over a
+live note.
+
+1. Export the phone copy to `E:\AI\memory\phone-inbox\<date>\` — never into `knowledge/`.
+2. Compare three ways: note missing on the PC (new), `updated:` newer on the phone, or
+   content differing while dates match. Review that report before writing.
+3. Merge line-level under `## Evidence` — new dated lines are appended, existing ones
+   are never replaced. Then `kb.py dupes`, `kb.py consolidate` (dry run), `index`, `lint`.
+4. Keep the inbox folder after merging; the next export is diffed against it as well as
+   against the live corpus, which is how a phone edit that never arrived gets noticed.
+
+`updated:` decides freshness, the body decides the merge: a newer date is not a licence
+to overwrite lines added after the phone was copied.
+
 ## Rules worth keeping
 
 - `kb.py` is ASCII-only output and stdlib-only, so it runs unchanged on Linux;
