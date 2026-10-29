@@ -7,7 +7,7 @@ still getting the injected map, the rules and `kb.py` search.
 
 | piece | where | note |
 |---|---|---|
-| OpenCode CLI | Termux | `npm i -g opencode` or the installer from opencode.ai |
+| OpenCode CLI | Termux | `opencode2`, aarch64 build - see *Installing OpenCode itself* |
 | model | DeepSeek cloud | `opencode auth login`; key lives on the phone only |
 | `kb.py` + adapters | cloned repo | stdlib only, root = its own directory |
 | `knowledge/`, `memory/` | phone (not from git) | excluded from the repo on purpose |
@@ -16,11 +16,15 @@ still getting the injected map, the rules and `kb.py` search.
 ## Steps
 
 ```bash
-pkg install python nodejs git
+pkg install python git ripgrep
 git clone https://github.com/victorarsenie/ai-unlimited-memory.git ~/memory
 export MEMORY_HOME=~/memory          # add to ~/.bashrc
 python ~/memory/kb.py index          # creates knowledge/INDEX.md if absent
 ```
+
+OpenCode itself is installed separately, from a package rather than npm (see
+below). Nothing in this repo needs Node on the phone: the adapters and `kb.py`
+are Python plus plain TypeScript files.
 
 The corpus starts empty on the phone: `knowledge/` and `memory/` are gitignored, so a
 clone gives code, not notes. Two ways to fill it:
@@ -31,9 +35,44 @@ clone gives code, not notes. Two ways to fill it:
    the repo). Works while the PC is on; edits made offline merge on reconnect, and
    `kb.py dupes` catches the double writes.
 
+## Installing OpenCode itself
+
+`npm i -g opencode` does not work in plain Termux: OpenCode is a Bun binary and
+Bun has no Android support (upstream closed it as "not planned"), so stock Bun
+dies on Android's seccomp policy. The working route is the prebuilt aarch64
+build from `guysoft/opencode-termux`, which cross-compiles Bun and WebKit/JSC
+and patches around Android's restrictions:
+
+| build | command | what it is |
+|---|---|---|
+| v2 | `opencode2` | pre-release, OpenCode 2.x on official Bun 1.4.2 - **use this** |
+| v1 | `opencode` | stable, OpenCode 1.3.13 on patched Bun 1.2.13 |
+
+They install side by side and never overwrite each other. Prefer v2: the plugin
+shim below uses the v2 hook API, so v1 would need a different plugin.
+
+```bash
+# v2 pre-release, as published in v1.0.3 of the build repo
+curl -LO https://github.com/guysoft/opencode-termux/releases/download/v1.0.3/opencode2-1.0.3-1-aarch64.pkg.tar.xz
+pacman -U opencode2-1.0.3-1-aarch64.pkg.tar.xz
+opencode2 --version    # reports the app version, e.g. 2.0.0-android-termux.2
+```
+
+The pacman and deb packages install `ripgrep` as a dependency. Known
+degradations: no native file watcher (falls back to polling), `bun upgrade`
+disabled, no Android release channel upstream. Release URLs change between
+builds - the repo README is the source of truth, not this page.
+
+Alternatives, if the prebuilt binary ever lags behind or misbehaves:
+`proot-distro` Debian with Node 22 (the `MeanderX/opencode-android` installer),
+heavier but tracks upstream normally; or SSH/a hosted server, which keeps the
+phone as a client rather than a host.
+
 ## Injection on Termux
 
-The OpenCode plugin is the same adapter; only the shim path changes:
+The OpenCode plugin is the same adapter; only the shim path changes. This is the
+**v2** plugin API - the same shim the desktop uses, and it only loads in
+`opencode2`:
 
 ```bash
 mkdir -p ~/.config/opencode/plugins
