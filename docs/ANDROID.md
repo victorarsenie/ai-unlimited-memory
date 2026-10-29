@@ -53,6 +53,15 @@ apt update && pkg upgrade -y
 A partial upgrade is not a broken one: apt installs what it fetched and reports the
 rest, so re-running it after the mirror change finishes the job.
 
+Why a foreign mirror shows up at all: `pkg` rotates. With no mirror group chosen it
+tests every mirror in `$PREFIX/etc/termux/mirrors/{asia,chinese_mainland,europe,north_america,oceania,russia,south_america}`,
+picks a reachable one by weight, and re-checks every 6 hours - so a
+mainland-China host can be selected from anywhere. Two things stop it:
+`termux-change-repo` (Single mirror -> Europe -> `ro.mirror.flokinet.net`, which
+writes `$PREFIX/etc/termux/chosen_mirrors`), and
+`export TERMUX_PKG_NO_MIRROR_SELECT=1` in `~/.bashrc`, which stops `pkg` from
+rewriting `sources.list` even if that file is lost.
+
 ## Fast path: one bundle
 
 Everything the phone needs - OpenCode 2, the code, the corpus, the shim, the
