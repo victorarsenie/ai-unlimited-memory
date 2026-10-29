@@ -44,7 +44,7 @@ where they don't. In Termux:
 ```bash
 termux-setup-storage
 cd ~/storage/downloads
-tar -xzf android-bundle.tar.gz -C ~/bundle
+mkdir -p ~/bundle && tar -xzf android-bundle.tar.gz -C ~/bundle
 bash ~/bundle/setup.sh
 ```
 
