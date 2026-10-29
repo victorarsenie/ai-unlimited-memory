@@ -32,6 +32,12 @@ mean Android 12+ may kill background work: run `termux-wake-lock` before long
 installs and `termux-wake-unlock` after, and read
 `[Process completed (signal 9)]` as that same mechanism.
 
+Run `pkg update && pkg upgrade` once before anything else. It is not for OpenCode -
+`setup.sh` installs only the seven packages it needs - but the APK ships a frozen
+bootstrap, and installing modern packages over a stale one is where "unable to
+locate package" and held/broken-package conflicts come from. It takes a few
+minutes and is never needed again.
+
 ## Fast path: one bundle
 
 Everything the phone needs - OpenCode 2, the code, the corpus, the shim, the
