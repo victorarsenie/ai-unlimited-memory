@@ -8,7 +8,9 @@
   phone side is then two commands: transfer, `bash setup.sh`.
 
   memory/profile.md is left out unless -WithPersonal: it describes you, and a
-  phone is a device that gets lost.
+  phone is a device that gets lost. knowledge/health/ is left out unless
+  -WithHealth, for the same reason, and the staged index is regenerated so the
+  phone corpus does not point at notes it does not have.
 
 .EXAMPLE
   pwsh -File scripts/android/make-bundle.ps1
@@ -17,6 +19,7 @@
 [CmdletBinding()]
 param(
   [switch]$WithPersonal,
+  [switch]$WithHealth,
   [string]$Out = "E:\AI\memory\android-bundle.tar.gz"
 )
 
@@ -33,6 +36,14 @@ if ($LASTEXITCODE -ge 8) { throw "robocopy failed with $LASTEXITCODE" }
 
 if (-not $WithPersonal) {
   Remove-Item -Force "$stage\repo\memory\profile.md" -ErrorAction SilentlyContinue
+}
+
+# Medical notes never ship by default, and the maps are rebuilt afterwards so the
+# phone corpus does not list a domain whose files were stripped.
+if (-not $WithHealth) {
+  Remove-Item -Recurse -Force "$stage\repo\knowledge\health" -ErrorAction SilentlyContinue
+  & python "$stage\repo\kb.py" index | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "kb.py index failed on the staged copy ($LASTEXITCODE)" }
 }
 
 Copy-Item "$PSScriptRoot\setup-termux.sh" "$stage\setup.sh"
@@ -53,4 +64,5 @@ $corpus = (& tar -tzf $Out | Where-Object { $_ -match '^\./repo/knowledge/.+\.md
 
 Write-Host ("bundle: {0}  ({1:N2} MB, {2} entries, {3} notes)" -f $Out, $size, $files, $corpus)
 Write-Host ("personal notes: {0}" -f ($(if ($WithPersonal) { "included" } else { "excluded" })))
+Write-Host ("medical notes:  {0}" -f ($(if ($WithHealth) { "included" } else { "excluded" })))
 Remove-Item -Recurse -Force $stage
