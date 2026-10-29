@@ -199,6 +199,37 @@ mkdir -p ~/.config/opencode/skills/knowledge-base
 cp ~/memory/skills/knowledge-base/SKILL.md ~/.config/opencode/skills/knowledge-base/
 ```
 
+## Using the TUI on a phone
+
+Two things make OpenCode 2 usable with a soft keyboard.
+
+The keyboard will not come back after Android dismisses it, because nothing tells
+the TUI to re-request it. Add Termux's `KEYBOARD` virtual key to the extra-keys
+row and tap it when that happens:
+
+```bash
+echo "extra-keys = [['ESC','/','-','HOME','UP','END','PGUP'],['TAB','CTRL','ALT','LEFT','DOWN','RIGHT','PGDN'],['KEYBOARD']]" >> ~/.termux/termux.properties
+```
+
+```bash
+termux-reload-settings
+```
+
+Keybinds worth knowing - the leader is `ctrl+x`, and the extra-keys row makes
+`CTRL` sticky, so tap CTRL then the letter:
+
+| action | keys |
+|---|---|
+| new session (the `+` at the top) | `ctrl+x` then `n` |
+| session list | `ctrl+x` then `l` |
+| delete a session (inside the list) | `ctrl+d` |
+| quit the app | `ctrl+x` then `q` |
+| keymap overlay | `ctrl+alt+k` |
+| interrupt a reply | `escape` |
+
+`opencode2` reopens the last session on start, so quitting the app is the normal
+way to end a session: there is no per-session close button.
+
 ## Manual transfer (no sync daemon)
 
 The simplest arrangement, and the one to prefer if updates are occasional: copy the
