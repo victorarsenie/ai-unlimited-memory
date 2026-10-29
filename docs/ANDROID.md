@@ -259,7 +259,25 @@ Notes:
 The phone is a capture device; the PC stays canonical. Nothing is ever copied over a
 live note.
 
-1. Export the phone copy to `E:\AI\memory\phone-inbox\<date>\` — never into `knowledge/`.
+On the phone, pack the corpus and serve it:
+
+```bash
+cd ~/memory && tar -czf ~/kb-export.tar.gz knowledge memory
+```
+
+```bash
+python -m http.server 8000
+```
+
+On the PC, `scripts/android/pull-from-phone.ps1` fetches that archive into
+`E:\AI\memory\phone-inbox\<timestamp>\` and prints every note that needs a decision -
+`NEW`, `NEWER`, `DIFF`:
+
+```powershell
+pwsh -File scripts/android/pull-from-phone.ps1 -Url http://<phone-ip>:8000/kb-export.tar.gz
+```
+
+1. Export the phone copy to `E:\AI\memory\phone-inbox\<date>\` - never into `knowledge/`.
 2. Compare three ways: note missing on the PC (new), `updated:` newer on the phone, or
    content differing while dates match. Review that report before writing.
 3. Merge line-level under `## Evidence` — new dated lines are appended, existing ones
