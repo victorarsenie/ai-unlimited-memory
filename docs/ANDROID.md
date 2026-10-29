@@ -13,7 +13,41 @@ still getting the injected map, the rules and `kb.py` search.
 | `knowledge/`, `memory/` | phone (not from git) | excluded from the repo on purpose |
 | corpus sync | Syncthing, optional | phone ↔ PC, no cloud |
 
-## Steps
+## Fast path: one bundle
+
+Everything the phone needs - OpenCode 2, the code, the corpus, the shim, the
+skill, the phone config - ships as one archive. On the PC:
+
+```powershell
+pwsh -File scripts/android/make-bundle.ps1     # -> E:\AI\memory\android-bundle.tar.gz, ~0.3 MB
+```
+
+`memory/profile.md` is left out; add `-WithPersonal` if the device is encrypted
+and you want the assistant to know you there. Move the file over USB (`adb push`,
+or drag it into `Download/`), then in Termux:
+
+```bash
+termux-setup-storage
+cd ~/storage/downloads
+tar -xzf android-bundle.tar.gz -C ~/bundle
+bash ~/bundle/setup.sh
+```
+
+What `setup.sh` does, in order: installs `python curl tar xz-utils unzip ripgrep`;
+resolves the newest `opencode2` aarch64 build, verifies the published SHA256 and
+installs it with `dpkg`; copies the code into `~/memory` **without touching an
+existing corpus** (unless `--force`); adds `MEMORY_HOME` to `~/.bashrc`; writes
+the v2 plugin shim and the knowledge-base skill; puts the keyless websearch
+server at `~/websearch`; writes `~/.config/opencode/opencode.jsonc`; runs
+`kb.py index` and `kb.py lint`. Re-running it refreshes code and leaves notes
+alone. The last step is `opencode2 auth login`, or `/connect` in the TUI.
+
+Default model is `opencode-go/beam-free`: one of exactly two unlimited models on
+Go, and the only one of the two that does not train on request data - which
+matters, because the memory layer puts your notes into every request.
+`iceman-contributor-free` is the other one, and it does train on them.
+
+## Steps (manual route)
 
 ```bash
 pkg install python git ripgrep
@@ -52,11 +86,21 @@ They install side by side and never overwrite each other. Prefer v2: the plugin
 shim below uses the v2 hook API, so v1 would need a different plugin.
 
 ```bash
-# v2 pre-release, as published in v1.0.3 of the build repo
-curl -LO https://github.com/guysoft/opencode-termux/releases/download/v1.0.3/opencode2-1.0.3-1-aarch64.pkg.tar.xz
-pacman -U opencode2-1.0.3-1-aarch64.pkg.tar.xz
-opencode2 --version    # reports the app version, e.g. 2.0.0-android-termux.2
+# by hand: newest v2 build is v1.0.3-rc3 (2026-10-18); setup.sh resolves this itself
+curl -LO https://github.com/guysoft/opencode-termux/releases/download/v1.0.3-rc3/opencode2_1.0.3rc3_aarch64.deb
+dpkg -i opencode2_1.0.3rc3_aarch64.deb
+opencode2 --version
 ```
+
+Checked 2026-10-29: that `.deb` is 72,824,430 bytes, matches the release's
+`SHA256SUMS`, declares `Architecture: aarch64` and `Depends: ripgrep`, and
+unpacks to `data/data/com.termux/files/usr/bin/opencode2` plus
+`libexec/opencode2/` - so `dpkg -i` installs into `$PREFIX` without root.
+`pacman -U` is not a stock Termux command; use `dpkg -i` or the standalone zip.
+
+The v2 builds are GitHub *prereleases*, so `/releases/latest` returns the v1 line
+(`opencode` 1.17.9) instead. The setup script lists releases and picks the newest
+`opencode2` asset rather than trusting `latest`.
 
 The pacman and deb packages install `ripgrep` as a dependency. Known
 degradations: no native file watcher (falls back to polling), `bun upgrade`
