@@ -30,15 +30,18 @@ Planul detaliat este în [`plan.md`](plan.md). Comparația inițială a produsel
 - [ ] Import generic documentat, fără ipoteze despre exportul ChatGPT.
 - [ ] Walkthrough manual cu date sintetice.
 
-## Etapa 3 — Import ChatGPT (când arhiva este disponibilă)
+## Etapa 3 — Import ChatGPT
 
-- [ ] Inspectează arhiva și inventariază formatele reale.
-- [ ] Implementează adaptorul pe baza formatului observat.
-- [ ] Păstrează RAW și asigură import repetabil cu raport de rezultate, inclusiv imagini/fișiere atașate și legăturile lor către mesaje.
+- [x] Inspectează arhiva locală și inventariază formatele reale, fără a publica conținutul.
+- [x] Creează un pachet demonstrativ integral sintetic și reguli Git pentru a exclude exporturile personale.
+- [ ] Importă integral arhiva ca backfill istoric: toate conversațiile și mesajele incluse, în ordinea și structura observată, fără a le reduce la rezumate.
+- [ ] Implementează și revizuiește adaptorul modular pentru formatul observat; păstrează payload-uri și segmente necunoscute legate de RAW.
+- [ ] Păstrează RAW și asigură import repetabil cu raport de acoperire, mesaje și atașamente procesate/omise/necunoscute.
 - [ ] Verifică local și privat pe o copie a arhivei; nu include date sau rezultate în Git.
 
-## Etapa 4 — UI și Android în LAN
+## Etapa 4 — Captură curentă, UI și Android în LAN
 
+- [ ] Checkpoint periodic detaliat și structurat pentru conversația ChatGPT activă, de la ultima captură; transcriptul brut accesibil se păstrează în RAW, iar metoda, intervalul, acoperirea și golurile se raportează.
 - [ ] UI de căutare, explorare și provenance.
 - [ ] Hartă a entităților și relațiilor.
 - [ ] Previzualizări imagini/fișiere, acces la original și acces offline la atașamentele sincronizate pe Android.
@@ -61,7 +64,7 @@ Planul detaliat este în [`plan.md`](plan.md). Comparația inițială a produsel
 
 ## Etapa 7 — Sincronizare și recuperare
 
-- [ ] Proiectează replicarea PC-authoritative și tratarea conflictelor.
+- [ ] Proiectează replicarea bidirecțională între două baze locale complete și tratarea conflictelor.
 - [ ] Documentează accesul LAN și backup/restaurare.
 - [ ] Walkthrough manual de restaurare.
 

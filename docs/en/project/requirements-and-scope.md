@@ -7,9 +7,11 @@
 
 ## 1. Summary
 
+**The primary goal is to preserve useful conversation context over time.** Import the historical ChatGPT archive in full and keep its original intact in RAW. For current and future conversations, the system may save checkpoints as detailed, structured summaries that remove repetition while retaining decisions, preferences, facts, corrections, actions, open questions, and temporal context. When a source transcript is accessible, preserve it intact in RAW; the derived summary links to its conversation and source messages. A summary is never labeled as a verbatim transcript.
+
 Personal Memory is a local-first personal system that brings conversations and other sources into a repository controlled by the user. The repository must remain useful independently of the AI provider or interface: ChatGPT, local models such as Qwen, gpt-oss-20b, and Gemma 4, agent harnesses such as OpenCode and Hermes, or a purpose-built interface.
 
-The system preserves original sources separately from normalized content, indexes, and generated knowledge. It supports full-text and semantic search, navigation through conversations and relationships, and tracing every result back to its source. It is accessible from a Windows PC and Android. The PC is planned as the host and primary source of truth; the phone may hold a local copy or cache for offline use and later synchronization over the home network.
+The system preserves original sources separately from normalized content, indexes, and generated knowledge. It supports full-text and semantic search, navigation through conversations and relationships, and tracing every result back to its source. It is accessible from a Windows PC and Android. Windows and Android each keep a complete local database. The apps synchronize bidirectionally over the local network or when the user requests it; each device can work independently offline.
 
 This is also a portfolio project. It documents a real need, evaluated alternatives, tradeoffs, data modeling, robust import, provenance, search, and integration with multiple AI clients. The goal is not to claim that a custom product is superior in every situation, but to show which concrete requirements remain unmet by existing solutions and how this system addresses them.
 
@@ -17,20 +19,21 @@ This is also a portfolio project. It documents a real need, evaluated alternativ
 
 Useful history is scattered across conversations and tools. The built-in memory of one assistant does not give the user an independent repository that is easy to audit, export, and reuse with another agent. Basic search is insufficient when the user remembers the idea but not the exact wording; summaries without sources can distort context; and connecting to a home PC must account for the LAN and phone usage.
 
-The user works on Windows, keeps projects under `D:\AI`, uses Android, and is usually at home with the phone and PC on the same network. The project has a GitHub repository: [victorarsenie/PersonalMemory](https://github.com/victorarsenie/PersonalMemory). A ChatGPT export archive has been requested and may arrive later. Its format is not yet available for inspection.
+The user works on Windows, keeps projects under `D:\AI`, uses Android, and is usually at home with the phone and PC on the same network. The project has a GitHub repository: [victorarsenie/PersonalMemory](https://github.com/victorarsenie/PersonalMemory). The ChatGPT export archive has been received and inspected locally; the importer targets the observed structure, and the real archive stays outside the Git repository.
 
 ## 3. Goals
 
-1. A user-controlled memory repository, with a canonical copy on the PC.
-2. Byte-for-byte preservation of imported source files, with hashes and metadata.
-3. Regenerable indexes and derived data, each linked to the source that supports it.
-4. Lexical and semantic search, with filters and citable results.
-5. Exploration of conversations, documents, entities, and relationships in a graph view.
-6. Use from Windows and Android; LAN access in the first phase and phone offline support to the extent established by prototyping.
-7. An API and adapters that let different applications and agents use the same repository.
-8. ChatGPT import without assumptions about the export schema; implement the parser only after receiving and inspecting the real archive.
-9. Include images and files attached to sources in the local repository, preserve originals, retain source links, and make them accessible on PC/Android.
-10. Document the project's differentiation from existing products and present implemented capabilities honestly in the portfolio.
+1. A user-controlled dataset with equivalent complete local copies on Windows and Android and every available message in source order.
+2. Importing the ChatGPT archive is the required historical backfill: import every conversation present in the supplied archive without reducing it to summaries or extracted facts.
+3. Preserve the archive and raw files byte-for-byte, with hashes and metadata.
+4. Capture new conversations through a separately validated method; show conversations or portions that were not captured.
+5. Keep regenerable indexes and derived data linked to their supporting transcript; summaries and the knowledge graph never replace the conversation.
+6. Provide lexical and semantic search with filters and citable results.
+7. Explore conversations, documents, entities, and relationships in a graph view.
+8. Support Windows and Android, LAN access initially, and phone offline use as established by prototyping.
+9. Provide an API and adapters so different applications and agents can use the same repository.
+10. Include attached images and files, preserve originals, retain source-message links, and make them accessible on PC/Android.
+11. Document differentiation from existing products and present implemented capabilities honestly in the portfolio.
 
 ## 4. Non-goals and Boundaries
 
@@ -47,6 +50,7 @@ The user works on Windows, keeps projects under `D:\AI`, uses Android, and is us
 
 ### 5.1 Repository owner
 
+- Periodically saves a detailed, structured checkpoint of the current conversation since the previous capture and reviews its coverage; can also preserve the raw transcript when accessible.
 - Adds or imports a source and reviews the ingestion report.
 - Searches by words, concepts, time range, provenance, or entity.
 - Opens a citation in the context of its original message or document.
@@ -60,30 +64,33 @@ The user works on Windows, keeps projects under `D:\AI`, uses Android, and is us
 - Receives relevant passages with metadata and provenance, not unsupported assertions.
 - Initially reads data only; any write operation requires explicit authorization and logging rules.
 
-### 5.3 Later ChatGPT export import
+### 5.3 ChatGPT History Recovery and Conversation Capture
 
-- The user provides the archive.
-- The system inventories files and identifies the actual structure without deleting or rewriting the source.
-- The importer reports recognized, skipped, or unknown files and maps confirmed data to the canonical model.
-- Retrying an import does not duplicate content; errors are explainable and recoverable.
+- Archive import is required for historical backfill: ingest every conversation included in the supplied export and preserve the original archive in RAW.
+- Preserve messages across roles and their observed order/structure, including variants and multimodal parts present in the export.
+- The import report lists conversations and messages found, imported, skipped, or not interpretable; unknown payloads remain in RAW and are marked unprocessed.
+- An archive cannot recover deleted conversations or content absent from the export. Do not claim complete history without stating archive coverage and errors.
+- In addition to archive backfill, active and later conversations can be preserved through structured checkpoints at intervals or before compaction. Retain important content and source links, remove repetition, and show the capture method and gaps.
 
 ## 6. Functional Requirements
 
-### F-01 — Sources and Imports
+### F-01 — Conversation Archiving and Source Ingestion
 
-Each ingestion has an identifier, source type, import time, adapter version, and outcome. Sources may be archives, documents, images, attachments, or later imports. An import preserves originals, describes what it processed, and can be retried without creating duplicates.
+For historical archive imports, preserve every available message, role/author, order, timestamp, variant/branch, and source-provided content part; retain unknown content as an opaque payload linked to RAW. For current/future captures, the system may create detailed structured summaries for the interval since the prior checkpoint: important context/facts, preferences and corrections, decisions with rationale, actions with status/deadline, unresolved questions, and links to messages/attachments. Repetition can be compressed; contradictions and changes over time must remain visible. Keep an accessible raw transcript intact in RAW; the summary is derived, versioned, and labeled as a summary rather than a transcript.
+
+Each capture/import records method, time, interval, saved representation (transcript, structured summary, or both), coverage (complete/partial/unknown), and a report of processed, skipped, and failed items. For Codex, a PreCompact hook can provide the transcript path before compaction when available; because its format is not a stable interface, archive the raw copy in RAW before interpreting it. Captures are retryable without duplicates.
 
 ### F-02 — Data Separation
 
 - **RAW:** source archives and original image/file binaries, read-only after ingestion, preserved byte-for-byte and identified by SHA-256.
-- **INDEX:** canonical model, file metadata, and links between attachments, messages, and sources; regenerable lexical/vector indexes.
+- **INDEX:** canonical structure of every conversation and message, order, role, content parts, variants, source locators, and attachment metadata. Lexical/vector indexes are rebuildable; the normalized transcript is never replaced by summaries.
 - **DERIVED:** passages, extracted text, thumbnails, OCR, embeddings, summaries, entities, relationships, and claims. Each derived result retains provenance and processor/model version.
 
 Reindexing may delete and rebuild only regenerable structures; it must not alter RAW.
 
 ### F-03 — Provenance and Audit
 
-Every result or claim must point to the source, conversation/document, message/passage, and position where the format allows. Distinguish original content, automatically extracted content, user-confirmed content, and disputed/corrected content. Preserve transformation and synchronization history.
+Every result or claim must point to the RAW archive, conversation, message/variant, content part, and source position where available. Provenance also links each imported transcript back to its original file. Distinguish original content, automatically extracted content, user-confirmed content, and disputed/corrected content. Preserve transformation and synchronization history.
 
 ### F-04 — Search
 
@@ -118,6 +125,10 @@ Acceptance: the original can be opened/recovered with an identical hash after im
 ### F-09 — Backup, Privacy, and Portability
 
 Backups include RAW, the canonical database, and the configuration needed for restoration; regenerable indexes may be rebuilt. LAN access is authorized; public ports are not exposed by default. Export formats and schema are documented so the user is not locked into one client.
+
+### F-11 — Historical Backfill and Capture Coverage
+
+Importing the ChatGPT archive is the required path for recovering historical conversations still present in the export. Separately, the system must save the current and later conversations as detailed, structured checkpoints with source and attachment links; when the raw transcript is accessible, preserve it in RAW. Until that method is validated, the interface shows which sources and time ranges are not captured. Do not claim automatic or exhaustive capture without evidence and a coverage report. OpenAI’s documented export is user-initiated in settings and delivers a ZIP; the documentation reviewed here does not describe automatic per-message sync to a local repository. [ChatGPT Android data export](https://help.openai.com/en/articles/8167885-how-to-export-your-data-from-the-chatgpt-android-app).
 
 ## 7. Non-functional Requirements
 
@@ -248,4 +259,4 @@ Demos, screenshots, fixtures, and all data in the GitHub repository use syntheti
 - **2026-10-01:** The user confirmed building our own system if existing products do not meet the requirements, and requested documenting the comparison and added value as a portfolio project.
 - **2026-10-01:** OpenAI documentation confirms MCP apps are web-only, connect to remote servers, and may require a Secure MCP Tunnel for private-network servers; direct mobile MCP access is not assumed.
 - **2026-10-01:** The user specified that GitHub will contain synthetic data only for possible open-source publication; personal conversations will be used only locally in the created instance.
-- The ChatGPT export has not been inspected; its schema remains unknown.
+- The ChatGPT export was inspected locally; the importer follows the observed graph-shaped message structure.

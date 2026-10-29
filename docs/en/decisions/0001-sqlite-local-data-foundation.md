@@ -10,7 +10,7 @@ Accepted for the first implementation increment.
 
 ## Context
 
-The PC is the primary source of truth, with a later Android replica. The first implementation must work locally on Windows, preserve imported files byte-for-byte, keep personal data outside Git, and model sources, conversations, messages, attachments, knowledge-graph records, and provenance. The archive format remains unknown, so the schema must not encode assumptions about ChatGPT's export.
+Windows and Android are intended to keep complete local replicas with bidirectional synchronization. The first implementation must work locally on Windows, preserve imported files byte-for-byte, keep personal data outside Git, and model sources, conversations, messages, attachments, knowledge-graph records, and provenance. The received archive was inspected locally; the concrete parser must follow the observed structure and retain unknown payloads linked to RAW.
 
 The inspected environment has Python 3.12 and SQLite with FTS5 available. FastAPI and Uvicorn are not installed. The first increment should not require downloading dependencies or starting a network service.
 

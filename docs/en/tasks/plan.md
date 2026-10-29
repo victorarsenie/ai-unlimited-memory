@@ -8,11 +8,11 @@ The detailed requirements, scope, and portfolio rationale are in the [requiremen
 
 ## Working Decisions
 
-- The local PC repository is the source of truth; raw imports remain unchanged in RAW.
+- Windows and Android each keep a complete local database with bidirectional synchronization; raw imports remain unchanged in RAW.
 - INDEX contains normalized data and rebuildable indexes; DERIVED contains linked relations, summaries, and vectors with source provenance.
 - Before writing code, compare existing products against requirements and try configuring the best fit. Build custom components only for confirmed gaps. If a custom core remains necessary, the initial option is SQLite/FTS5 and a Python/FastAPI API; choose the runtime after inspecting the available environment.
 - The ChatGPT importer is modular: define the adapter contract first, then implement a concrete parser only after receiving and inspecting the real archive.
-- For Android, begin with an installable web interface accessible on the LAN. Decide on bidirectional offline sync and native app after validating the prototype and actual usage requirements.
+- The Android app will be native so it can receive links through Share and keep a complete local database; distribution is planned through Google Play. Bidirectional synchronization transfers changes between equivalent local copies.
 - Connect local models Qwen, gpt-oss-20b, and Gemma 4, plus ChatGPT, OpenCode, and Hermes clients/agents, through adapters over the stable API and data model; none is a core dependency.
 - Every phase preserves provenance (source, locator, import time, transformation, and related identifiers) and allows reindexing without changing RAW.
 
@@ -32,7 +32,7 @@ The initial comparison is documented in [Existing-solutions comparison](../resea
 
 - Inspect the environment and existing documentation; record actual runtime choices and directory structure.
 - Define `RAW/`, `INDEX/`, `DERIVED/`, local configuration, and backup rules.
-- Define the initial schema for sources, conversations, messages, attachment binaries, entities, relationships, and provenance; use versioned migrations and store hashes, filenames, MIME types, and sizes.
+- Define the schema for complete conversation archives: sources, captures, conversations, messages and ordered parts, variants/branches, attachment binaries, entities, relations, and provenance; use versioned migrations and retain RAW locators.
 - Acceptance: an empty repository can be initialized reproducibly; transformations and reindexing never overwrite source data.
 - Verification: manually review the schema, directories, and initialization instructions.
 
@@ -47,20 +47,21 @@ The initial comparison is documented in [Existing-solutions comparison](../resea
 ### 3. Modular ChatGPT Importer
 
 - Define the adapter interface, import report, and policies for duplicates, attachments, and errors.
-- When the archive is available, inspect its structure and included documentation before implementing the concrete parser.
-- Inventory the attachments actually present; preserve originals byte-for-byte, link them to source messages, and report unknown formats without stopping import.
+- The received archive structure and included documentation have been inspected; implement the concrete parser against the observed format.
+- ChatGPT archive import is the required historical backfill: ingest all conversations and messages present, in the observed structure/order; compare the capture report and mark gaps explicitly. Inventory attachments, preserve originals byte-for-byte, and keep unknown formats without stopping import.
 - Preserve original files exactly; write extracted content and indexes only to their designated areas.
-- Acceptance: import is retryable/idempotent, reports accepted/rejected content, and allows indexes to be rebuilt from RAW.
+- Acceptance: complete historical backfill is retryable/idempotent; the report states coverage and errors; each imported message/part navigates to its RAW archive; indexes rebuild without replacing transcripts with summaries.
 - Verification: privately validate locally against a copy of the real archive, checking item counts and provenance; data and results never enter Git.
 
-### 4. Exploration Interface and Android LAN Access
+### 4. Exploration Interface, Current Capture, and Android LAN Access
 
+- Provide an explicit flow to save the active ChatGPT conversation as a full transcript and report missing messages/parts; validate the method without prematurely calling it automatic.
 - Build UI for search, conversation/source navigation, and provenance inspection.
 - Add graph visualization as an exploration layer over approved/derived entities and relationships.
 - Configure controlled local access, clear PC/phone instructions, and useful behavior when the server is unavailable.
 - Add previews for supported images/files, access to originals, and resumable transfers for attachments synced for offline use.
 - Acceptance: PC and phone on the same network can access the system; UI shows sources and links without exposing raw directories.
-- Verification: manual walkthrough on PC and Android over the local network.
+- Before implementing capture, verify platform limits separately: ChatGPT MCP is web-only and is not a background hook; the web extension is a prototype to validate; native Android remains open. Do not enable global capture until coverage and RAW archival are demonstrated locally.
 
 ### 5. Semantic Search and Local Integration
 
@@ -81,7 +82,7 @@ The initial comparison is documented in [Existing-solutions comparison](../resea
 
 ### 7. Synchronization, Security, and Backup
 
-- Evaluate a PC-authoritative model with local Android replica/cache and queues for offline changes.
+- Design bidirectional replication between two complete local databases, including conflict handling.
 - Document LAN authentication, minimal port exposure, backup, and restoration.
 - Consider remote access only on request through a private tunnel; no router port forwarding by default.
 - Acceptance: backup/restore and conflict handling are explained before bidirectional sync is enabled.

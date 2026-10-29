@@ -25,6 +25,10 @@ front matter, capped so it stays cheap enough to inject every turn.
     python kb.py review --clear
     python kb.py consolidate      propose near-duplicate merges
     python kb.py consolidate --apply
+    python kb.py --home <dir> ...  run any command against another tree (KB_HOME)
+    python kb.py scratch init [<name>] [--skeleton]   throwaway session tree, indexed
+    python kb.py scratch list|rm <name>
+    python kb.py compact <topic> [--keep N] [--apply]   fold old evidence into a rollup
 """
 from __future__ import annotations
 
@@ -33,6 +37,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -40,12 +45,15 @@ import urllib.request
 from datetime import date, datetime
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+# KB_HOME points every command at another tree. The bench runs a session against a
+# scratch copy so nothing the model writes can reach the live notes.
+ROOT = Path(os.environ.get("KB_HOME") or Path(__file__).resolve().parent).resolve()
 KB = ROOT / "knowledge"
 MEM = ROOT / "memory"
 PENDING = KB / "pending"
 PROJECTS = KB / "projects"
 INDEX = KB / "INDEX.md"
+SCRATCH_ROOT = Path(os.environ.get("KB_SCRATCH_ROOT") or r"E:\AI\bench\.scratch")
 MAX_MAP = 3000          # characters, injected every turn
 MAX_PROJECT_MAP = 1200  # characters per project overlay, injected only in that repo
 MAX_NOTE_LINES = 400    # a note bigger than this is a document, split it
@@ -115,7 +123,7 @@ def notes() -> list[dict]:
 
 
 DOMAIN_SKIP = {"pending", "_archive", ".index"}
-MAX_DOMAIN_MAP = 1600   # characters per domain map, read on demand
+MAX_DOMAIN_MAP = 2000   # characters per domain map, read on demand
 
 
 def domain_dirs() -> list[Path]:
@@ -1169,11 +1177,152 @@ def cmd_dupes() -> int:
     return 1
 
 
+def cmd_scratch(action: str = "list", name: str = "", notes: bool = True) -> int:
+    """A throwaway KB tree for one session.
+
+    The bench needs a place where a model can write freely. A scratch session is a
+    copy of the notes plus memory/ and the map skeleton, indexed so search and the
+    map work. Nothing in it is ever read by the live tree. `--skeleton` copies the
+    map and memory only, with no notes.
+    """
+    if action == "init":
+        if not name:
+            name = datetime.now().strftime("session-%Y%m%d-%H%M%S")
+        dest = SCRATCH_ROOT / name
+        if dest.exists():
+            print(f"scratch: {dest} already exists")
+            return 1
+        (dest / "knowledge").mkdir(parents=True)
+        (dest / "memory").mkdir(parents=True)
+        for f in MEM.glob("*.md"):
+            shutil.copy2(f, dest / "memory" / f.name)
+        for f in ("INDEX.md", "user.md"):
+            src = KB / f
+            if src.exists():
+                shutil.copy2(src, dest / "knowledge" / f)
+        for d in KB.iterdir():
+            if not d.is_dir() or d.name in (".index", "_archive", "pending"):
+                continue
+            (dest / "knowledge" / d.name).mkdir(exist_ok=True)
+            for f in ("INDEX.md", "_domain.md"):
+                src = d / f
+                if src.exists():
+                    shutil.copy2(src, dest / "knowledge" / d.name / f)
+        if notes:
+            for src in KB.rglob("*.md"):
+                rel = src.relative_to(KB)
+                if rel.parts[0] in (".index", "_archive"):
+                    continue
+                dst = dest / "knowledge" / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                if not dst.exists():
+                    shutil.copy2(src, dst)
+        (dest / "knowledge" / "pending").mkdir(exist_ok=True)
+        env = dict(os.environ)
+        env["KB_HOME"] = str(dest)
+        run = subprocess.run([sys.executable, str(Path(__file__).resolve()), "index"],
+                             env=env, capture_output=True, text=True)
+        if run.returncode != 0:
+            print((run.stdout or run.stderr)[-400:])
+            return 1
+        count = sum(1 for _ in (dest / "knowledge").rglob("*.md"))
+        print(f"scratch ready: {dest}  ({count} notes)")
+        print(f'  python kb.py --home "{dest}" stats')
+        print(f"  set KB_HOME={dest}   (for a process that calls kb.py itself)")
+        return 0
+    if action == "list":
+        if not SCRATCH_ROOT.exists():
+            print(f"scratch: {SCRATCH_ROOT} does not exist yet")
+            return 0
+        for d in sorted(SCRATCH_ROOT.iterdir()):
+            if d.is_dir():
+                print(f"  {d.name:34} {sum(1 for _ in d.rglob('*.md')):3} md")
+        return 0
+    if action == "rm":
+        dest = SCRATCH_ROOT / name
+        if not dest.is_dir():
+            print(f"scratch: no session {name!r}")
+            return 1
+        shutil.rmtree(dest)
+        print(f"scratch: removed {dest}")
+        return 0
+    print("scratch: init [<name>] [--skeleton] | list | rm <name>")
+    return 2
+
+
+def cmd_compact(topic: str, keep: int = 8, apply: bool = False) -> int:
+    """Fold dated evidence older than the newest `keep` lines into one rollup line.
+
+    Deterministic, no model involved: this is the measurable compaction primitive a
+    session test needs, and it works on a real note too (preview by default).
+    """
+    path = KB / (topic if topic.endswith(".md") else topic + ".md")
+    if not path.exists():
+        print(f"compact: no note {topic}")
+        return 1
+    text = path.read_text(encoding="utf-8")
+    m = FM.match(text)
+    head = text[: m.end()] if m else ""
+    body = text[m.end():] if m else text
+    lines = body.splitlines()
+    dated = [i for i, line in enumerate(lines) if re.match(r"^-\s+\d{4}-\d{2}-\d{2}:", line)]
+    if len(dated) <= keep:
+        print(f"compact: {len(dated)} dated lines, none older than the newest {keep}")
+        return 0
+    old = dated[: len(dated) - keep]
+    first, last = old[0], old[-1]
+    d0 = re.match(r"^-\s+(\d{4}-\d{2}-\d{2}):", lines[first]).group(1)
+    d1 = re.match(r"^-\s+(\d{4}-\d{2}-\d{2}):", lines[last]).group(1)
+    rollup = (f"- {d0}..{d1}: {len(old)} earlier findings folded into this line by "
+              f"`kb.py compact` on {date.today().isoformat()}")
+    drop = set(old)
+    out: list[str] = []
+    for i, line in enumerate(lines):
+        if i == first:
+            out.append(rollup)
+        if i in drop:
+            continue
+        out.append(line)
+    saved = len(lines) - len(out)
+    print(f"compact: {path.relative_to(ROOT)}  {len(lines)} -> {len(out)} lines "
+          f"(-{saved}), folding {d0}..{d1}")
+    if not apply:
+        print("  preview only, pass --apply to write")
+        return 0
+    if "updated:" in head:
+        head = re.sub(r"^updated:.*$", f"updated: {date.today().isoformat()}", head, count=1, flags=re.M)
+    path.write_text(head + "\n".join(out) + "\n", encoding="utf-8")
+    cmd_index()
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print(__doc__)
         return 2
     cmd, rest = argv[1], argv[2:]
+    if cmd == "--home" and rest:
+        env = dict(os.environ)
+        env["KB_HOME"] = str(Path(rest[0]).resolve())
+        return subprocess.run([sys.executable, str(Path(__file__).resolve())] + rest[1:],
+                              env=env).returncode
+    if cmd == "scratch":
+        action = rest[0] if rest else "list"
+        name = rest[1] if len(rest) > 1 and not rest[1].startswith("--") else ""
+        return cmd_scratch(action, name, "--skeleton" not in rest)
+    if cmd == "compact" and rest:
+        keep, apply = 8, "--apply" in rest
+        if "--keep" in rest:
+            at = rest.index("--keep")
+            if at + 1 >= len(rest):
+                print("compact: --keep takes a number")
+                return 2
+            try:
+                keep = int(rest[at + 1])
+            except ValueError:
+                print("compact: --keep takes a number")
+                return 2
+        return cmd_compact(rest[0], keep, apply)
     if cmd == "index":
         return cmd_index()
     if cmd == "lint":

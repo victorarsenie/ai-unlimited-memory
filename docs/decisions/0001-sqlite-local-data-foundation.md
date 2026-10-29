@@ -10,7 +10,7 @@ Acceptată pentru primul increment de implementare.
 
 ## Context
 
-PC-ul este sursa principală de adevăr, iar telefonul Android va primi ulterior o replică. Prima implementare trebuie să funcționeze local pe Windows, să păstreze fișierele importate byte-cu-byte, să țină datele personale în afara Git și să modeleze surse, conversații, mesaje, atașamente, datele knowledge graph și proveniența. Formatul arhivei nu este cunoscut; schema nu trebuie să presupună structura exportului ChatGPT.
+Aplicațiile Windows și Android sunt proiectate să păstreze baze locale complete, sincronizate bidirecțional. Prima implementare trebuie să funcționeze local pe Windows, să păstreze fișierele importate byte-cu-byte, să țină datele personale în afara Git și să modeleze surse, conversații, mesaje, atașamente, datele knowledge graph și proveniența. Arhiva primită a fost inspectată local; parserul concret trebuie să urmeze structura observată și să păstreze payload-urile necunoscute legate de RAW.
 
 Mediul inspectat include Python 3.12 și SQLite cu FTS5 disponibil. FastAPI și Uvicorn nu sunt instalate. Primul increment nu trebuie să depindă de descărcarea unor pachete sau de pornirea unui serviciu de rețea.
 

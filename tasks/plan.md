@@ -8,11 +8,11 @@ Documentația detaliată a cerințelor, scopului și valorii de portofoliu este 
 
 ## Decizii de lucru
 
-- Baza locală de pe PC este sursa de adevăr; importurile brute rămân nemodificate în RAW.
+- Aplicațiile Windows și Android păstrează baze locale complete, sincronizate bidirecțional; importurile brute rămân nemodificate în RAW.
 - INDEX conține date normalizate și indexuri regenerabile; DERIVED păstrează legături, rezumate și vectori cu proveniență către sursă.
 - Înainte de a scrie cod, compară aplicațiile existente cu cerințele și încearcă configurația celei mai potrivite. Construim componente proprii doar pentru golurile confirmate. Dacă nucleul propriu rămâne necesar, varianta inițială este SQLite/FTS5 și API Python/FastAPI; runtime-ul se alege după verificarea mediului.
 - Importer-ul ChatGPT va fi modular: întâi contractul și interfața adaptorului, apoi parserul concret numai după primirea arhivei reale și inspectarea structurii sale.
-- Pentru Android se începe cu o interfață web instalabilă și accesibilă în rețeaua locală. Sincronizarea offline bidirecțională și aplicația nativă se decid după validarea prototipului și a cerințelor reale de utilizare.
+- Aplicația Android va fi nativă pentru a primi linkuri prin Share și va păstra o bază locală completă; distribuirea este planificată prin Google Play. Sincronizarea bidirecțională transferă modificări între copii locale echivalente.
 - Modelele locale Qwen, gpt-oss-20b și Gemma 4, plus clienții/agenții ChatGPT, OpenCode și Hermes, se conectează prin adaptoare peste API-ul și modelul de date stabile; niciunul nu devine dependență a nucleului.
 - Fiecare etapă păstrează provenance (sursa, locatorul, timpul importului, transformarea și identificatorii legați) și oferă operații de reindexare fără modificarea RAW.
 
@@ -33,7 +33,7 @@ Comparația inițială este documentată în [`docs/research/existing-solutions-
 
 - Inspectează mediul și documentația existentă; consemnează alegerile efective de runtime și structura directoarelor.
 - Definește structura `RAW/`, `INDEX/`, `DERIVED/`, configurarea locală și regulile de backup.
-- Definește schema inițială pentru surse, conversații, mesaje, binare/atașamente, entități, relații și provenance; folosește migrații versionate și stochează hash, nume, tip MIME și dimensiune.
+- Definește schema pentru arhivarea integrală a conversațiilor: surse, capturi, conversații, mesaje și segmente ordonate, variante/ramuri, binare/atașamente, entități, relații și provenance; păstrează locatorii către RAW în migrații versionate.
 - Criteriu: un depozit gol poate fi inițializat reproductibil; datele sursă nu sunt suprascrise de transformări sau reindexare.
 - Verificare: revizuire manuală a schemei, directoarelor și instrucțiunilor de inițializare.
 
@@ -49,19 +49,20 @@ Comparația inițială este documentată în [`docs/research/existing-solutions-
 
 - Definește interfața adaptorului, raportul de import și politica pentru fișiere repetate, atașamente și erori.
 - După disponibilitatea arhivei, inspectează structura și documentația inclusă înainte de a implementa parserul concret.
-- Inventariază atașamentele efectiv întâlnite; păstrează originalele byte-cu-byte, leagă-le de mesajele sursă și raportează formatele necunoscute fără să oprească importul.
+- Importul arhivei ChatGPT este backfill-ul istoric obligatoriu: importă toate conversațiile și mesajele prezente, în structura/ordinea observată; compară raportul de captură și marchează explicit lipsurile. Inventariază atașamentele; păstrează originalele byte-cu-byte și formatele necunoscute fără să oprească importul.
 - Păstrează fișierele originale exact; scrie extrasele și indexurile doar în zonele destinate.
-- Criteriu: importul este reluabil/idempotent, raportează ce a acceptat sau respins și permite refacerea indexurilor din RAW.
+- Criteriu: backfill-ul integral este reluabil/idempotent; raportul declară acoperirea și erorile; fiecare mesaj/segment importat se navighează până la arhiva RAW; indexurile se reconstruiesc fără a înlocui transcriptul cu rezumate.
 - Verificare: validare locală, privată, pe o copie a arhivei reale, cu controlul numărului de elemente și al provenienței; datele și rezultatele nu intră în Git.
 
-### 4. Interfață de explorare și acces Android în LAN
+### 4. Interfață de explorare, captură curentă și acces Android în LAN
 
+- Oferă un flux explicit pentru salvarea conversației ChatGPT active ca transcript integral și raportarea mesajelor/segmentelor lipsă; validează metoda de captură fără a o declara automată prematur.
 - Construiește UI pentru căutare, navigarea conversațiilor/surselor și inspectarea provenienței.
 - Adaugă vizualizarea grafului ca strat de explorare peste entități și relații aprobate/derivate.
 - Configurează acces local controlat, instrucțiuni clare pentru PC și telefon și comportament util când serverul nu este disponibil.
 - Adaugă previzualizări pentru imaginile și fișierele suportate, acces la original și transferuri reluabile pentru atașamentele sincronizate offline.
 - Criteriu: PC-ul și telefonul din aceeași rețea pot accesa sistemul; UI afișează sursa și legăturile fără a expune directoarele brute.
-- Verificare: walkthrough manual pe PC și Android în rețeaua locală.
+- Înaintea implementării capturii, verifică separat limitele platformei: MCP ChatGPT este web-only și nu este hook de fundal; extensia web este prototip de validat; Android nativ rămâne deschis. Nu activa o captură globală până când acoperirea și modul de arhivare RAW sunt demonstrate local.
 
 ### 5. Semantic search și integrare locală
 
@@ -82,7 +83,7 @@ Comparația inițială este documentată în [`docs/research/existing-solutions-
 
 ### 7. Sincronizare, securizare și backup
 
-- Evaluează un model PC-authoritative cu replică/cache local pe Android și cozi pentru schimbări offline.
+- Proiectează replicarea bidirecțională între două baze locale complete, cu tratarea conflictelor.
 - Documentează autentificarea în LAN, expunerea minimă a porturilor, backup-ul și restaurarea.
 - Ia în calcul acces de la distanță numai la cerere, printr-un tunel privat; fără port forwarding implicit.
 - Criteriu: procedura de backup/restaurare și conflictele de sincronizare sunt explicate înainte de a activa sincronizarea bidirecțională.

@@ -16,7 +16,11 @@ import { join } from "node:path";
 
 const HOME = process.env.MEMORY_HOME || "E:\\AI\\memory\\ai-unlimited-memory";
 const PROJECTS = join(HOME, "knowledge", "projects");
-const LIMITS = { rules: 3200, profile: 1400, projects: 1800, map: 3000, overlay: 1200 };
+// 0 = no cap. The rules file is the operating contract: a silently truncated
+// contract is worse than a fat prompt, so it is never cut. Everything else is a
+// digest and may be capped; a cap that fires now logs a warning instead of [truncated] alone.
+const LIMITS = { rules: 0, profile: 1400, projects: 1800, map: 3000, overlay: 1200 };
+const SOFT = { rules: 7000 };
 
 const HEADER =
   "[memory] Always-on memory from the knowledge layer. The map survived " +
@@ -113,11 +117,17 @@ function readUtf8(path) {
   return readFileSync(path, "utf8").replace(/^\uFEFF/, "");
 }
 
+const _capWarned = new Set();
+
 function readCapped(path, limit) {
   try {
     const text = readUtf8(path).trim();
     if (!text) return "";
-    if (text.length <= limit) return text;
+    if (!limit || text.length <= limit) return text;
+    if (!_capWarned.has(path)) {
+      _capWarned.add(path);
+      log(`warn: ${path.split(/[\\/]/).slice(-2).join("/")} is ${text.length} chars, cap ${limit}, ${text.length - limit} dropped`);
+    }
     return text.slice(0, limit).replace(/\n[^\n]*$/, "") + "\n[truncated]";
   } catch {
     return "";
@@ -219,7 +229,12 @@ export function buildContext(cwd) {
   const parts = [];
   // Rules first: harness-agnostic behaviour, the same file Hermes injects.
   const rules = readCapped(join(HOME, "memory", "rules.md"), LIMITS.rules);
-  if (rules) parts.push(rules);
+  if (rules) {
+    parts.push(rules);
+    if (rules.length > SOFT.rules) {
+      log(`warn: memory/rules.md is ${rules.length} chars, over the ${SOFT.rules} soft budget - trim it, do not raise the cap`);
+    }
+  }
   for (const [name, limit] of [
     ["profile.md", LIMITS.profile],
     ["projects.md", LIMITS.projects],

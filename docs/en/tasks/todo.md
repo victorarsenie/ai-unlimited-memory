@@ -30,15 +30,18 @@ The detailed plan is in [plan.md](plan.md). The initial product comparison is in
 - [ ] Documented generic import without assumptions about the ChatGPT export.
 - [ ] Manual walkthrough with synthetic data.
 
-## Phase 3 — ChatGPT Import (when the archive is available)
+## Phase 3 — ChatGPT Import
 
-- [ ] Inspect the archive and inventory its real formats.
-- [ ] Implement an adapter based on the observed format.
-- [ ] Preserve RAW and ensure retryable import with a results report, including attached images/files and their source-message links.
+- [x] Inspect the local archive and inventory its real formats without publishing content.
+- [x] Create an entirely synthetic demo package and Git rules that exclude personal exports.
+- [ ] Import the entire archive as historical backfill: all included conversations and messages, in the observed order and structure, without reducing them to summaries.
+- [ ] Implement and review the modular adapter for the observed format; retain unknown payloads and content parts linked to RAW.
+- [ ] Preserve RAW and ensure retryable import with a coverage report for processed/skipped/unknown messages and attachments.
 - [ ] Verify locally and privately using a copy of the archive; do not put data or results in Git.
 
-## Phase 4 — UI and Android on LAN
+## Phase 4 — Current Capture, UI, and Android on LAN
 
+- [ ] Periodic detailed structured checkpoint for the active ChatGPT conversation since the previous capture; preserve accessible raw transcript in RAW and report method, interval, coverage, and gaps.
 - [ ] Search, exploration, and provenance UI.
 - [ ] Entity and relationship map.
 - [ ] Image/file previews, original access, and offline access to synced attachments on Android.
@@ -61,6 +64,6 @@ The detailed plan is in [plan.md](plan.md). The initial product comparison is in
 
 ## Phase 7 — Synchronization and Recovery
 
-- [ ] Design PC-authoritative replication and conflict handling.
+- [ ] Design bidirectional replication between two complete local databases and conflict handling.
 - [ ] Document LAN access and backup/restore.
 - [ ] Manual restoration walkthrough.

@@ -26,3 +26,7 @@
 **/user.json
 *.zip
 !examples/synthetic/chatgpt-export.zip
+
+# Python bytecode
+__pycache__/
+*.pyc

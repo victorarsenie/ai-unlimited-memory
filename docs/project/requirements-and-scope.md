@@ -7,9 +7,11 @@
 
 ## 1. Rezumat
 
+**Obiectivul principal este păstrarea contextului util al conversațiilor în timp.** Arhiva ChatGPT istorică se importă integral, iar originalul rămâne intact în RAW. Pentru conversațiile curente și viitoare, sistemul poate salva checkpoint-uri ca rezumate detaliate și structurate, care elimină repetițiile fără să piardă decizii, preferințe, fapte, corectări, acțiuni, întrebări deschise și context temporal. Când transcriptul-sursă este accesibil, îl păstrăm intact în RAW; rezumatul derivat include trimiteri la conversație și la mesajele-sursă. Un rezumat nu este prezentat drept transcript verbatim.
+
 Personal Memory este un sistem personal, local-first, care adună conversații și alte surse într-un depozit controlat de utilizator. Depozitul trebuie să rămână util independent de furnizorul AI sau de interfața folosită: ChatGPT, modele locale precum Qwen, gpt-oss-20b și Gemma 4, agenți/harness-uri precum OpenCode și Hermes ori o interfață proprie.
 
-Sistemul păstrează sursele originale separat de conținutul normalizat, indexuri și concluzii generate. Permite căutare full-text și semantică, navigarea conversațiilor și relațiilor, urmărirea fiecărui rezultat până la sursă, precum și acces de pe PC Windows și Android. PC-ul este planificat ca gazdă și sursă principală de adevăr; telefonul poate deține o copie locală/cache pentru utilizare offline și sincronizare ulterioară în rețeaua de acasă.
+Sistemul păstrează sursele originale separat de conținutul normalizat, indexuri și concluzii generate. Permite căutare full-text și semantică, navigarea conversațiilor și relațiilor, urmărirea fiecărui rezultat până la sursă, precum și acces de pe PC Windows și Android. Windows și Android păstrează fiecare o bază locală completă. Aplicațiile se sincronizează bidirecțional în rețeaua locală sau la cererea utilizatorului; ambele dispozitive pot funcționa independent offline.
 
 Acesta este și un proiect de portofoliu: documentează o nevoie reală, alternativele evaluate, compromisurile, modelarea datelor, importul robust, proveniența, căutarea și integrarea mai multor clienți AI. Scopul nu este să pretindă că un produs propriu este superior în orice situație, ci să arate ce cerințe concrete rămân neacoperite de soluțiile existente și cum sunt rezolvate.
 
@@ -17,20 +19,21 @@ Acesta este și un proiect de portofoliu: documentează o nevoie reală, alterna
 
 Istoricul util este dispersat în conversații și instrumente diferite. Memoria nativă a unui singur asistent nu oferă utilizatorului un depozit independent, ușor de auditat, exportat și refolosit de alt agent. O căutare obișnuită nu ajunge când utilizatorul își amintește ideea, nu formularea exactă; rezumatele fără surse pot deforma contextul; iar conectarea la un PC de acasă trebuie să țină cont de rețeaua LAN și de folosirea telefonului.
 
-Utilizatorul lucrează pe Windows, păstrează proiectele pe `D:\AI`, folosește Android, are de regulă telefonul și PC-ul pe aceeași rețea de acasă și deține un depozit GitHub pentru proiect: [victorarsenie/PersonalMemory](https://github.com/victorarsenie/PersonalMemory). Arhiva de export ChatGPT a fost solicitată și poate sosi ulterior. Formatul nu este încă disponibil pentru inspecție.
+Utilizatorul lucrează pe Windows, păstrează proiectele pe `D:\AI`, folosește Android, are de regulă telefonul și PC-ul pe aceeași rețea de acasă și deține un depozit GitHub pentru proiect: [victorarsenie/PersonalMemory](https://github.com/victorarsenie/PersonalMemory). Arhiva de export ChatGPT a fost primită și inspectată local; importerul țintește structura observată, iar arhiva reală rămâne în afara depozitului Git.
 
 ## 3. Obiective
 
-1. Un depozit de memorie aflat sub controlul utilizatorului, cu o copie canonică pe PC.
-2. Conservarea byte-cu-byte a fișierelor brute primite, cu hash și metadate.
-3. Indexuri și date derivate regenerabile, cu legătură către sursa care le justifică.
-4. Căutare lexicală și semantică, cu filtre și rezultate citabile.
-5. Explorarea conversațiilor, documentelor, entităților și relațiilor într-o hartă.
-6. Folosire de pe Windows și Android; acces în LAN în prima etapă și suport offline pe telefon în măsura stabilită prin prototip.
-7. API și adaptoare care permit reutilizarea aceluiași depozit de către aplicații și agenți diferiți.
-8. Import ChatGPT fără presupuneri despre schema exportului; implementarea parserului începe doar după primirea și inspecția arhivei reale.
-9. Includerea imaginilor și fișierelor atașate în depozitul local, cu păstrarea originalelor, legătură către sursă și acces pe PC/Android.
-10. Documentarea diferențierii față de produse existente și prezentarea onestă a capabilităților implementate în portofoliu.
+1. Un depozit controlat de utilizator, cu copii locale echivalente pe Windows și Android, care păstrează conversațiile complete și toate mesajele disponibile în ordinea sursei.
+2. Importul arhivei ChatGPT este backfill-ul istoric necesar: importă fiecare conversație prezentă în arhiva furnizată, fără a reduce conținutul la rezumate sau fapte extrase.
+3. Păstrarea byte-cu-byte a arhivei și fișierelor brute, cu hash și metadate.
+4. Capturarea conversațiilor noi printr-o metodă validată separat; sistemul afișează explicit conversațiile sau porțiunile care nu au fost capturate.
+5. Indexuri și date derivate regenerabile, legate de transcriptul care le justifică; rezumatele și knowledge graph-ul nu înlocuiesc conversația.
+6. Căutare lexicală și semantică, cu filtre și rezultate citabile.
+7. Explorarea conversațiilor, documentelor, entităților și relațiilor într-o hartă.
+8. Folosire de pe Windows și Android; acces în LAN în prima etapă și suport offline pe telefon în măsura stabilită prin prototip.
+9. API și adaptoare care permit reutilizarea aceluiași depozit de către aplicații și agenți diferiți.
+10. Includerea imaginilor și fișierelor atașate, cu păstrarea originalelor și legătură către mesaj.
+11. Documentarea diferențierii față de produse existente și prezentarea onestă a capabilităților implementate în portofoliu.
 
 ## 4. Non-obiective și limite
 
@@ -47,6 +50,7 @@ Utilizatorul lucrează pe Windows, păstrează proiectele pe `D:\AI`, folosește
 
 ### 5.1 Proprietarul depozitului
 
+- Salvează periodic un checkpoint detaliat și structurat al conversației curente, de la ultima captură, și vede ce perioadă/surse acoperă; poate salva suplimentar transcriptul brut când acesta este accesibil.
 - Adaugă/importă o sursă și vede raportul de ingestie.
 - Caută după cuvinte, concepte, interval de timp, proveniență sau entitate.
 - Deschide citatul în contextul mesajului/documentului original.
@@ -60,30 +64,33 @@ Utilizatorul lucrează pe Windows, păstrează proiectele pe `D:\AI`, folosește
 - Primește fragmente relevante cu metadate și proveniență, nu doar o afirmație fără sursă.
 - În prima versiune, citește datele; orice operație de scriere necesită reguli explicite de autorizare și jurnalizare.
 
-### 5.3 Import ulterior al exportului ChatGPT
+### 5.3 Recuperarea istoricului ChatGPT și capturarea conversațiilor
 
-- Utilizatorul furnizează arhiva.
-- Sistemul inventariază fișierele și identifică structura reală, fără a șterge ori rescrie sursa.
-- Importer-ul raportează fișiere recunoscute, ignorate sau necunoscute și mapează datele confirmate la schema canonică.
-- O reluare a importului nu dublează conținutul; erorile sunt explicabile și corectabile.
+- Importul arhivei este obligatoriu pentru backfill-ul istoric: preia fiecare conversație inclusă în exportul primit și păstrează arhiva originală în RAW.
+- Importer-ul păstrează mesajele din toate rolurile și în ordinea/structura observată, inclusiv variantele și segmentele multimedia pe care exportul le conține.
+- Raportul arată conversațiile și mesajele găsite, importate, omise sau imposibil de interpretat; payload-urile necunoscute rămân în RAW și sunt marcate neprocesate.
+- Arhiva nu poate recupera conversații șterse sau conținut absent din export. Sistemul nu declară istoricul complet fără să indice acoperirea și erorile.
+- Pe lângă backfill, conversația activă și cele ulterioare pot fi păstrate prin checkpoint-uri structurate periodice sau înainte de compactare. Se păstrează elementele importante și legăturile la surse, se elimină repetițiile, iar utilizatorul vede metoda și golurile de captură.
 
 ## 6. Cerințe funcționale
 
-### F-01 — Surse și importuri
+### F-01 — Arhivarea conversațiilor și ingestia surselor
 
-Fiecare ingestie are identificator, tip de sursă, momentul importului, versiune de adaptor și rezultat. Sursele pot proveni din arhive, documente, imagini, fișiere atașate sau importuri ulterioare. Un import păstrează originalele, descrie ce a procesat și permite reluare fără duplicate.
+La importul arhivei istorice se păstrează fiecare mesaj disponibil, rolul/autorul, ordinea, marcajele temporale, variantele/ramurile și segmentele furnizate de sursă; conținutul necunoscut rămâne payload opac legat de RAW. Pentru capturile curente/viitoare, sistemul poate crea rezumate detaliate și structurate pentru intervalul de la ultimul checkpoint: context/fapte importante, preferințe și corectări, decizii cu motivație, acțiuni cu stare/termen, întrebări nerezolvate și referințe la mesaje/atașamente. Redundanțele se pot comprima; contradicțiile și schimbările în timp nu se șterg. Transcriptul brut accesibil rămâne intact în RAW, iar rezumatul este derivat, versionat și declarat ca rezumat, nu transcript.
+
+Fiecare captură/import înregistrează metoda, momentul, intervalul, reprezentarea salvată (transcript, rezumat structurat sau ambele), acoperirea (completă/parțială/necunoscută) și raportul elementelor procesate, omise și erorilor. Pentru Codex, un hook PreCompact poate furniza calea transcriptului înainte de compactare, dacă este disponibilă; formatul nu este o interfață stabilă, deci copia brută se arhivează în RAW înainte de interpretare. Capturile sunt reluabile fără duplicate.
 
 ### F-02 — Separarea datelor
 
 - **RAW:** arhiva sursă și binarele originale ale imaginilor/fișierelor, read-only după ingestie, păstrate byte-cu-byte și identificate prin SHA-256.
-- **INDEX:** model canonic, metadatele fișierelor și legăturile dintre atașamente, mesaje și surse; indici lexicali/vectoriali regenerabili.
+- **INDEX:** structura canonică a fiecărei conversații și a fiecărui mesaj, ordinea, rolul, segmentele de conținut, variantele, locatorii către sursă și metadatele atașamentelor. Indexurile lexicale/vectoriale sunt regenerabile; transcriptul normalizat nu este înlocuit de rezumate.
 - **DERIVED:** fragmente, text extras, miniaturi, OCR, embeddings, rezumate, entități, relații și afirmații. Fiecare rezultat derivat păstrează proveniența și versiunea procesorului/modelului.
 
 Reindexarea șterge și reconstruiește numai structurile regenerabile, nu RAW.
 
 ### F-03 — Proveniență și audit
 
-Orice rezultat sau afirmație trebuie să poată indica sursa, conversația/documentul, mesajul/pasajul și poziția, când formatul o permite. Distinge între conținut original, extras automat, confirmat de utilizator și contestat/corectat. Păstrează istoricul transformărilor și al sincronizării.
+Orice rezultat sau afirmație trebuie să indice arhiva RAW, conversația, mesajul/varianta, segmentul de conținut și poziția sursă, când formatul o permite. Proveniența leagă transcriptul importat de fișierul original. Distinge între conținut original, extras automat, confirmat de utilizator și contestat/corectat. Păstrează istoricul transformărilor și al sincronizării.
 
 ### F-04 — Căutare
 
@@ -118,6 +125,10 @@ Criteriu de acceptare: originalul poate fi deschis sau recuperat cu hash identic
 ### F-09 — Backup, confidențialitate și portabilitate
 
 Backup-ul include RAW, baza canonică și configurațiile necesare restaurării; indexurile regenerabile pot fi reconstruite. Accesul LAN este autorizat; nu se expun porturi publice implicit. Formatele exportabile și schema sunt documentate, astfel încât utilizatorul să nu fie captiv într-un singur client.
+
+### F-11 — Backfill istoric și acoperirea capturilor
+
+Importul arhivei ChatGPT este calea obligatorie pentru recuperarea conversațiilor istorice încă prezente în export. Separat, sistemul trebuie să poată salva conversația ChatGPT curentă și cele ulterioare ca checkpoint-uri detaliate și structurate, cu trimiteri la surse și atașamente; când transcriptul brut este accesibil, îl păstrează în RAW. Până la validarea metodei, interfața arată ce surse și intervale nu sunt capturate. Nu se pretinde captură automată sau exhaustivă fără dovezi și raport de acoperire. Fluxul de export documentat de OpenAI este inițiat de utilizator din setări și livrează o arhivă ZIP; documentația consultată nu descrie sincronizarea automată per mesaj către un depozit local. [Exportul datelor ChatGPT pe Android](https://help.openai.com/en/articles/8167885-how-to-export-your-data-from-the-chatgpt-android-app).
 
 ## 7. Cerințe non-funcționale
 
