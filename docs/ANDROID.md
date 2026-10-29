@@ -10,7 +10,7 @@ still getting the injected map, the rules and `kb.py` search.
 | OpenCode CLI | Termux | `opencode2`, aarch64 build - see *Installing OpenCode itself* |
 | model | DeepSeek cloud | `opencode auth login`; key lives on the phone only |
 | `kb.py` + adapters | cloned repo | stdlib only, root = its own directory |
-| `knowledge/`, `memory/` | phone (not from git) | excluded from the repo on purpose |
+| `knowledge/`, `memory/` | private `ai-memory-data` repo | code stays public: the corpus is a separate repo, junctioned in (PC) or symlinked (phone) |
 | corpus sync | Syncthing, optional | phone ↔ PC, no cloud |
 
 ## Before you start
