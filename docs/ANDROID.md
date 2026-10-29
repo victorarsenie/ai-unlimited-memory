@@ -17,8 +17,10 @@ still getting the injected map, the rules and `kb.py` search.
 
 Termux is the host, not an alternative to OpenCode: it is a Linux userland inside
 Android, and everything below happens **inside** Termux. Install it from
-**F-Droid** (or the GitHub releases), not the Play Store - the Play Store build is
-outdated and its packages no longer resolve.
+[F-Droid](https://f-droid.org/packages/com.termux/) (stable 0.118.3, same build as
+the GitHub release) or the [GitHub releases](https://github.com/termux/termux-app/releases/latest)
+(`termux-app_v0.118.3+github-debug_arm64-v8a.apk` on an arm64 phone) - not the Play
+Store, whose build is outdated and whose packages no longer resolve.
 
 ## Fast path: one bundle
 
