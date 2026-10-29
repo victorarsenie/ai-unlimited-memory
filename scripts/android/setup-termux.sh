@@ -37,7 +37,7 @@ command -v pkg >/dev/null || die "pkg not found (is this Termux?)"
 [ -f "$BUNDLE/repo/kb.py" ] || die "bundle incomplete: $BUNDLE/repo/kb.py missing"
 
 say "packages"
-pkg install -y python curl tar xz-utils unzip ripgrep
+pkg install -y python curl tar xz-utils unzip ripgrep dpkg
 command -v python >/dev/null || die "python did not install"
 
 install_opencode2() {
@@ -87,7 +87,7 @@ PY
 
   case "$OC_ASSET" in
     *.deb)
-      command -v dpkg >/dev/null || die "dpkg missing; install it with: pkg install dpkg"
+      command -v dpkg >/dev/null || die "dpkg missing after pkg install; run: pkg install dpkg"
       dpkg -i "$TMPDIR/$OC_ASSET" || die "dpkg -i failed"
       ;;
     *) die "unexpected asset type: $OC_ASSET" ;;
