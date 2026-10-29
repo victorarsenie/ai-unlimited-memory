@@ -32,8 +32,11 @@ pwsh -File scripts/android/make-bundle.ps1     # -> E:\AI\memory\android-bundle.
 ```
 
 `memory/profile.md` is left out; add `-WithPersonal` if the device is encrypted
-and you want the assistant to know you there. Move the file over USB (`adb push`,
-or drag it into `Download/`), then in Termux:
+and you want the assistant to know you there. Then get the file onto the phone:
+USB (`adb push`, or drag it into `Download/`), or send it to yourself in WhatsApp
+as a **Document** and save it to `Download/`. WhatsApp works because the archive
+is small, but it means your notes transit Meta's servers - USB is the only route
+where they don't. In Termux:
 
 ```bash
 termux-setup-storage
