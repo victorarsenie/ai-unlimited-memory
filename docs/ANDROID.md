@@ -38,6 +38,21 @@ bootstrap, and installing modern packages over a stale one is where "unable to
 locate package" and held/broken-package conflicts come from. It takes a few
 minutes and is never needed again.
 
+If `pkg` crawls or times out ("Connection timed out", "Unable to fetch some
+archives"), the mirror in `$PREFIX/etc/apt/sources.list` is a bad one - 0.118.3 can
+come pointing at a mainland-China host. Point it at the Romanian mirror, or the
+official seed if that is slow too:
+
+```bash
+cd $PREFIX/etc/apt && cp sources.list sources.list.bak
+echo 'deb https://ro.mirror.flokinet.net/termux/termux-main stable main' > sources.list
+apt update && pkg upgrade -y
+# fallback: deb https://packages.termux.dev/apt/termux-main stable main
+```
+
+A partial upgrade is not a broken one: apt installs what it fetched and reports the
+rest, so re-running it after the mirror change finishes the job.
+
 ## Fast path: one bundle
 
 Everything the phone needs - OpenCode 2, the code, the corpus, the shim, the
