@@ -25,6 +25,13 @@ forge an update over it - use it only from that repo, never from a link someone
 sends you. Not the Play Store: outdated build, packages that no longer resolve.
 Signatures differ between channels, so switching later means uninstalling.
 
+Termux 0.118.3 targets API 28, so a current Android installer warns that it was
+"built for an older version of Android" and disables store auto-updates. That is
+harmless here - the shell, `pkg`, `python` and `opencode2` are unaffected. It does
+mean Android 12+ may kill background work: run `termux-wake-lock` before long
+installs and `termux-wake-unlock` after, and read
+`[Process completed (signal 9)]` as that same mechanism.
+
 ## Fast path: one bundle
 
 Everything the phone needs - OpenCode 2, the code, the corpus, the shim, the
