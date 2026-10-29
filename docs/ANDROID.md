@@ -13,6 +13,13 @@ still getting the injected map, the rules and `kb.py` search.
 | `knowledge/`, `memory/` | phone (not from git) | excluded from the repo on purpose |
 | corpus sync | Syncthing, optional | phone ↔ PC, no cloud |
 
+## Before you start
+
+Termux is the host, not an alternative to OpenCode: it is a Linux userland inside
+Android, and everything below happens **inside** Termux. Install it from
+**F-Droid** (or the GitHub releases), not the Play Store - the Play Store build is
+outdated and its packages no longer resolve.
+
 ## Fast path: one bundle
 
 Everything the phone needs - OpenCode 2, the code, the corpus, the shim, the
