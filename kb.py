@@ -10,7 +10,7 @@ front matter, capped so it stays cheap enough to inject every turn.
     python kb.py dupes            repeated evidence lines
     python kb.py project          overlay for the current directory
     python kb.py project <path>   overlay for a given directory
-    python kb.py search <term>    grep notes and memory
+    python kb.py search <term>    ranked search over notes and memory (BM25)
     python kb.py show <topic>     print a note
     python kb.py append <topic> <text>   add a dated finding under Evidence
     python kb.py append <topic> <text> --source <ref> [--force]
@@ -455,13 +455,105 @@ def iter_text():
             yield p, i, line
 
 
+def _norm_search(text: str) -> str:
+    """Lowercase and flatten punctuation so 'push to talk' matches 'push-to-talk'."""
+    return re.sub(r"[^a-z0-9]+", " ", text.lower())
+
+
+_TYPO = {"\u2014": "-", "\u2013": "-", "\u2192": "->", "\u2190": "<-", "\u2264": "<=",
+         "\u2265": ">=", "\u00d7": "x", "\u2026": "...", "\u2019": "'", "\u2018": "'",
+         "\u201c": '"', "\u201d": '"', "\u00b7": "-", "\u00a0": " "}
+
+
+def _ascii(text: str) -> str:
+    """Print-safe: common typographic characters mapped, the rest replaced.
+
+    Without this a note containing an em dash kills the whole search output on a
+    cp1252 console (UnicodeEncodeError mid-print).
+    """
+    for bad, good in _TYPO.items():
+        text = text.replace(bad, good)
+    return text.encode("ascii", "replace").decode("ascii")
+
+
+def _search_items() -> list[dict]:
+    """Notes plus memory files, in the shape `_lexical_scores` expects."""
+    items = _all_notes()
+    for p in sorted(MEM.glob("*.md")):
+        try:
+            meta, _ = parse_front_matter(p.read_text(encoding="utf-8-sig"))
+        except OSError:
+            continue
+        items.append({
+            "title": str(meta.get("title") or p.stem),
+            "answers": str(meta.get("answers") or ""),
+            "tags": meta.get("tags") or [],
+            "path": p,
+            "label": f"memory/{p.name}",
+        })
+    return items
+
+
 def cmd_search(term: str) -> int:
-    needle = term.lower()
+    """Ranked search over notes and memory files: BM25, no process, no index.
+
+    Reuses the same lexical scorer as `similar`, so a rare word ("unrun") outranks
+    a common one ("round") and long notes are length-normalised instead of winning
+    by size. Each hit is a file with its best-matching lines, capped at 6 files x 3
+    lines, so a common word cannot flood the output the way a raw grep does.
+    Exact-substring search remains as the fallback for queries the tokeniser
+    reduces to nothing (single letters, pure punctuation). Output shape is
+    unchanged: `path:line: text`, then `-- N hit(s)`.
+    """
+    needle = term.strip().lower()
+    if not needle:
+        print("-- 0 hit(s)")
+        return 1
+    terms = list(dict.fromkeys(_tokens(term)))
+    phrase = _norm_search(needle).strip()
+    scored = []
+    for score, n in _lexical_scores(_search_items(), term, True):
+        if score <= 0.0:
+            continue
+        raw = n["path"].read_text(encoding="utf-8-sig")
+        flat = _norm_search(raw)
+        tags = n["tags"] if isinstance(n["tags"], list) else [str(n["tags"])]
+        head = _norm_search(" ".join([str(n["title"]), str(n["answers"]), " ".join(map(str, tags))]))
+        head_hits = sum(1 for t in terms if t in head)
+        if head_hits:
+            score *= 1 + 0.3 * head_hits  # a topical note beats a log line quoting the words
+        if phrase and phrase in flat:
+            score *= 1.2
+        if str(n["label"]).startswith("memory/"):
+            score *= 0.6  # memory files are pointers; the note is the record
+        scored.append((score, n, raw))
+    scored.sort(key=lambda r: -r[0])
     hits = 0
-    for p, i, line in iter_text():
-        if needle in line.lower():
-            print(f"{p.relative_to(ROOT)}:{i}: {line.strip()[:160]}")
+    for _score, n, raw in scored[:6]:
+        p = n["path"]
+        best = []
+        for i, line in enumerate(raw.splitlines(), 1):
+            flat = _norm_search(line)
+            line_hits = sum(1 for t in terms if t in flat)
+            if needle in line.lower():
+                line_hits += 2
+            if line_hits:
+                best.append((line_hits, i, _ascii(line.strip()[:160])))
+        best.sort(key=lambda x: (-x[0], x[1]))
+        for _n, i, text in best[:3]:
+            print(f"{p.relative_to(ROOT)}:{i}: {text}")
             hits += 1
+    if not hits:
+        for p in text_files():
+            raw = p.read_text(encoding="utf-8-sig")
+            if needle not in raw.lower():
+                continue
+            for i, line in enumerate(raw.splitlines(), 1):
+                if needle in line.lower():
+                    print(f"{p.relative_to(ROOT)}:{i}: {_ascii(line.strip()[:160])}")
+                    hits += 1
+            if hits >= 12:
+                break
     print(f"-- {hits} hit(s)")
     return 0 if hits else 1
 
